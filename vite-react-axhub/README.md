@@ -90,6 +90,14 @@ axhub deploy status dep_xxxxx --watch
 - [Vite docs](https://vitejs.dev)
 - [Tailwind 3 docs](https://v3.tailwindcss.com)
 
+## axhub.ts 신뢰 모델 (이 템플릿)
+
+이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API
+(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. Transport 만 달라요:
+이 템플릿은 `credentials: "include"` (cookie auth) — **API_KEY 미주입** (브라우저 노출 위험).
+인증 필요 시 `express-axhub` / `hono-axhub` 백엔드 경유.
+풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+
 ## 8. 라이선스
 
 MIT

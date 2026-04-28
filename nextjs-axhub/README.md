@@ -98,6 +98,13 @@ axhub deploy status dep_xxxxx --watch
 - [Next.js 16 docs](https://nextjs.org/docs)
 - [Tailwind 3 docs](https://v3.tailwindcss.com)
 
+## axhub.ts 신뢰 모델 (이 템플릿)
+
+이 (Next.js) 템플릿은 **server-side**. axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API
+(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. Transport 만 달라요:
+이 템플릿은 `Authorization: Bearer ${process.env.APPHUB_API_KEY}`.
+풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+
 ## 8. 라이선스
 
 MIT — 마음껏 쓰세요.

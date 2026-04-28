@@ -85,6 +85,14 @@ axhub deploy status dep_xxxxx --watch
 
 vibe coder 첫 서버 = JS 가 더 쉬워요. 타입 다툴 시간에 기능 더 만들기. 나중에 익숙해지면 TS 로 옮기면 돼요.
 
+## axhub.ts 신뢰 모델 (이 템플릿)
+
+이 (Express) 템플릿은 **server-side**. axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API
+(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. Transport 만 달라요:
+이 템플릿은 `Authorization: Bearer ${process.env.APPHUB_API_KEY}`.
+이 템플릿은 `vite-react-axhub` 같은 브라우저 SPA 의 **backend 역할** 로 자주 쓰여요.
+풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+
 ## 8. 라이선스
 
 MIT

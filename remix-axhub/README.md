@@ -92,6 +92,14 @@ axhub deploy status dep_xxxxx --watch
 - [axhub 가이드](https://github.com/jocoding-ax-partners/axhub)
 - [Remix docs](https://remix.run/docs)
 
+## axhub.ts 신뢰 모델 (이 템플릿)
+
+이 (Remix SSR) 템플릿은 **server-side**. axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API
+(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. Transport 만 달라요:
+이 템플릿은 `Authorization: Bearer ${process.env.APPHUB_API_KEY}`,
+`.server.ts` 접미사가 클라이언트 번들 노출 자동 차단.
+풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+
 ## 8. 라이선스
 
 MIT

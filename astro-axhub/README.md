@@ -89,6 +89,13 @@ npx astro add react   # config 자동 수정
 
 그 후 `.astro` 안에서 `<MyReact client:load />` 로 끼워 써요.
 
+## axhub.ts 신뢰 모델 (이 템플릿)
+
+이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
+axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API (`axhub.fetch / data / slug / isConfigured`) 를 노출해요.
+Transport 만 달라요: 이 템플릿은 `Authorization: Bearer ${process.env.APPHUB_API_KEY}`.
+풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+
 ## 8. 라이선스
 
 MIT

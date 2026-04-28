@@ -82,6 +82,14 @@ axhub deploy status dep_xxxxx --watch
 Express 는 JS 라 그대로 실행, Hono 는 TS → tsc 로 컴파일 필요.
 한 번 빌드하고 `dist/` 만 배포하면 더 빨라요.
 
+## axhub.ts 신뢰 모델 (이 템플릿)
+
+이 (Hono) 템플릿은 **server-side**. axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API
+(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. Transport 만 달라요:
+이 템플릿은 `Authorization: Bearer ${process.env.APPHUB_API_KEY}`.
+`vite-react-axhub` / `nextjs-axhub` SPA / SSR 클라이언트의 가벼운 **backend 역할** 로 자주 쓰여요.
+풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+
 ## 8. 라이선스
 
 MIT
