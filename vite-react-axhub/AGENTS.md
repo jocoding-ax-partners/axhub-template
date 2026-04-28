@@ -1,4 +1,4 @@
-# AI Agents Guide (Codex / Claude / Cursor 공통)
+# AI Agents Guide (Claude Code 전용)
 
 이 프로젝트에서 일하는 모든 AI 에이전트가 따라야 하는 규칙이에요.
 

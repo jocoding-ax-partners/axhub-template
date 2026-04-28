@@ -1,7 +1,7 @@
 # vite-react-axhub
 
 axhub 위에서 바로 굴러가는 **Vite + React 18 + Tailwind 3** 정적 SPA 템플릿이에요.
-Claude Code, Cursor, Codex 같은 AI 도구로 바이브코딩하면서 axhub 에 한 줄 명령으로 배포할 수 있게 미리 세팅돼 있어요.
+**Claude Code** 로 바이브코딩하면서 axhub 에 한 줄 명령으로 배포할 수 있게 미리 세팅돼 있어요.
 
 ## 0. 누가 쓰면 좋아요
 
@@ -23,7 +23,7 @@ npm run dev
 
 ## 2. 바이브코딩 흐름
 
-1. Claude Code 든 Cursor 든 열어요.
+1. Claude Code 를 열어요.
 2. "메인 페이지에 입력 폼이랑 결과 카드 넣어줘" 같은 자연어 요청.
 3. AI 가 `src/App.tsx` 같은 파일을 고쳐요.
 4. 저장 → HMR 자동 새로고침.
