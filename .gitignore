@@ -44,3 +44,16 @@ coverage/
 
 # axhub local
 .axhub/
+
+# Ralph / oh-my-claudecode local state (per-developer, never push)
+.omc/
+
+# Lockfiles — 템플릿이라 사용자가 npm/pnpm/yarn 골라쓰게. 첫 install 때 생성됨.
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# TypeScript incremental build cache
+*.tsbuildinfo
