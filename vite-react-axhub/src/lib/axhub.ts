@@ -23,15 +23,35 @@ function buildUrl(base: string, path: string): string {
   return `${trimmedBase}/${trimmedPath}`;
 }
 
+// silent SSO 재인증은 세션당 1회만 — 무한 redirect 루프 방지.
+// (backend 의 ax_silent_attempt 는 한 왕복만 보호하므로 클라이언트도 가드를 둔다.)
+const SILENT_TRIED_KEY = "axhub_silent_tried";
+
+function silentAlreadyTried(): boolean {
+  try {
+    // 직전 silent 시도가 실패해 ?silent=failed 로 돌아왔거나, 이번 세션에 이미 시도함.
+    if (new URLSearchParams(window.location.search).get("silent") === "failed") return true;
+    return sessionStorage.getItem(SILENT_TRIED_KEY) === "1";
+  } catch {
+    return true; // storage 불가 시엔 redirect 안 함 (루프 회피 우선).
+  }
+}
+
 async function request(url: string, init: RequestInit): Promise<Response> {
   const res = await fetch(url, {
     credentials: "include",
     ...init,
     headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
   });
-  if (res.status === 401 && isSet(APP_ORIGIN)) {
-    // axhub silent SSO 로 재인증 (return_origin = 이 앱). backend 가 _hub_hint 로 prompt=none 시도.
-    window.location.href = `${API_BASE}/auth/silent/start?return_origin=${encodeURIComponent(APP_ORIGIN)}`;
+  if (res.status === 401) {
+    if (isSet(APP_ORIGIN) && !silentAlreadyTried()) {
+      try { sessionStorage.setItem(SILENT_TRIED_KEY, "1"); } catch { /* noop */ }
+      // axhub silent SSO 로 재인증 (return_origin = 이 앱). backend 가 _hub_hint 로 prompt=none 시도.
+      window.location.href = `${API_BASE}/auth/silent/start?return_origin=${encodeURIComponent(APP_ORIGIN)}`;
+    }
+  } else if (res.status < 400) {
+    // 인증 정상 — 다음 만료 시 다시 1회 시도할 수 있게 가드 해제.
+    try { sessionStorage.removeItem(SILENT_TRIED_KEY); } catch { /* noop */ }
   }
   return res;
 }
