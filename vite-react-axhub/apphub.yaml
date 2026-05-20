@@ -1,8 +1,7 @@
 # axhub 배포 설정
-# axhub backend가 vite.config.* + "vite" 의존성을 자동으로 감지해서
-# Vite preset(빌드 후 dist/ → nginx 정적 서빙) 으로 배포해요.
-# 클라이언트 SPA 라서 server-side 환경변수(API_KEY 등) 없이 동작해요.
-name: vite-react-axhub
+# 이 앱은 Dockerfile 로 빌드돼요 (Vite build → nginx 정적 서빙).
+# apphub.yaml 은 컨테이너 포트·헬스체크를 무엇으로 잡을지의 override 일 뿐이에요.
+# (Dockerfile 의 EXPOSE 와 맞추세요.)
 runtime:
   port: 80
   health_path: /

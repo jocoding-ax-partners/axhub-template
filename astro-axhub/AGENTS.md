@@ -39,9 +39,9 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+. **SSR.**
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행). axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (6개 템플릿 동일 외부 API).
-Transport: `Authorization: Bearer ${process.env.APPHUB_API_KEY}`. 풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행). axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (3종 동일 외부 API).
+인증: 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 백엔드에 `Authorization: Bearer` 로 포워딩. 정적 API key 안 씀. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포
 
-`/axhub:deploy` 또는 `axhub deploy create --app <slug> --branch main`. `apphub.yaml` 의 `start` 가 `npm start` 인지 확인.
+`/axhub:deploy` 또는 `axhub deploy create --app <slug> --branch main`. 빌드는 repo 의 `Dockerfile`(`node ./dist/server/entry.mjs`, PORT=3000)로 떠요.
