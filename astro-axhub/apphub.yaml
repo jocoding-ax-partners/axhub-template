@@ -1,11 +1,6 @@
 # axhub 배포 설정
-# Astro 는 axhub 의 자동 preset 매칭 대상이 아니에요. build/start 명시 필수.
-# @astrojs/node standalone 어댑터가 dist/server/entry.mjs 를 만들고, npm start 가 띄워요.
-name: astro-axhub
+# 이 앱은 Dockerfile 로 빌드돼요 (astro build, @astrojs/node standalone → node dist/server/entry.mjs).
+# apphub.yaml 은 컨테이너 포트·헬스체크 override 일 뿐이에요. (Dockerfile 의 EXPOSE 와 맞추세요.)
 runtime:
   port: 3000
   health_path: /
-build:
-  install: npm install
-  build: npm run build
-  start: npm start
