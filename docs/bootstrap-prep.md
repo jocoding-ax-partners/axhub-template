@@ -224,7 +224,7 @@ export async function axhubFetch(path: string, init: RequestInit = {}): Promise<
 | Q3 | silent SSO endpoint 실제 계약 | **Decided ✓ — `/auth/silent/start?return_origin=` 실재 확인** | `_hub_hint` 쿠키가 prompt=none 구동 |
 | Q5 | nextjs Dockerfile | **Decided ✓ — standalone(`server.js`)** | next.config 가 이미 `output:"standalone"` |
 | Q6 | vite-react SPA fallback | **Decided ✓ — 별 nginx.conf** | `try_files … /index.html` |
-| Q2 | 설정 주입 모델 | **Decided ✓ — placeholder 치환 통일 (env-var 폐기)** | env-var 방식은 빌드 env 주입 경로 부재(BuildArgs 비어있음) = backend 작업 필요 = scope 밖. placeholder 가 유일 viable |
+| Q2 | 설정 주입 모델 | **Decided ✓ — placeholder 치환 (env-var 방식 아님)** | deploy 의 env 주입(Cloud Build build args + K8s 런타임 EnvFrom)은 *앱에 등록된 env var* 만 대상. 그런데 ⑴ bootstrap `stageApp` 은 env 를 안 만들고(`{Name,Slug,Subdomain,Tier}` 만) ⑵ 시스템 컨텍스트(API base/slug 등) 자동주입 없음 ⑶ vite-react 는 정적 SPA 라 런타임 env 가 브라우저에 안 닿음. → placeholder 가 현재 wired 된 유일 경로. (사용자 *본인* env(시크릿/플래그)는 기존 env-var 기능으로 별도 추가 가능 — 그건 build args+런타임으로 정상 주입됨) |
 | Q4 | data API base 구성 | **Decided ✓ — `${API_BASE}/data/{tenantSlug}/{appSlug}/{table}`** | `dataapi/routes.go:50` 라우트 확인 |
 
 > **6/6 결정 완료.** §3.3 / §5 그대로 구현 가능 — 구현 PR 만 남음.
