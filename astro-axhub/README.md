@@ -11,11 +11,11 @@ React 컴포넌트도 island 로 끼워 쓸 수 있어요 (필요할 때 `npm i 
 ## 1. 5분 안에 시작
 
 ```bash
-npx degit jocoding-ax-partners/examples/astro-axhub my-app
+npx degit jocoding-ax-partners/axhub-template/astro-axhub my-app
 cd my-app
 npm install
 cp .env.example .env
-# .env 의 APPHUB_* 값을 채워요.
+# .env 의 APPHUB_* 값을 채워요. (axhub 로 배포하면 자동 주입돼요)
 npm run dev
 # http://localhost:4321 접속
 ```
@@ -26,25 +26,26 @@ npm run dev
 
 ```
 src/pages/blog.astro 만들어줘.
-- frontmatter: axhub.fetch("/v1/posts") 결과를 posts 변수로
+- frontmatter: axhub.fetch("/api/v1/posts", {}, { cookie: Astro.request.headers.get("cookie") }) 결과를 posts 변수로
 - 템플릿: posts.map 으로 카드 그리드
 - style: scoped CSS, 모바일 친화
 ```
 
 ## 3. axhub Hub API 쓰기
 
-`src/lib/axhub.ts` — Astro frontmatter / API endpoint 에서 그대로 import.
+`src/lib/axhub.ts` — Astro frontmatter / API endpoint 에서 import. 들어온 요청의 axhub 세션 쿠키를
+포워딩해 *그 사용자 자격*으로 호출하므로, 3번째 인자로 `Astro.request` 쿠키를 넘겨줘요.
 
 ```astro
 ---
 import { axhub } from "../lib/axhub";
-const res = await axhub.fetch("/v1/me");
+const res = await axhub.fetch("/api/v1/me", {}, { cookie: Astro.request.headers.get("cookie") });
 const me = await res.json();
 ---
 <p>안녕하세요, {me.name} 님</p>
 ```
 
-> ⚠️ axhub 헬퍼는 **Server-side 전용**이에요. `<script>` 태그 안에서 직접 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서.
+> ⚠️ axhub 헬퍼는 **Server-side 전용**이에요. `<script>` 태그(브라우저) 안에서 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서. (브라우저엔 사용자 쿠키 컨텍스트가 없어요.)
 
 ## 4. axhub 에 배포
 
@@ -60,24 +61,25 @@ axhub deploy create --app my-app-slug --branch main
 axhub deploy status dep_xxxxx --watch
 ```
 
-`apphub.yaml` 에 `start: npm start` 명시 — `@astrojs/node` standalone 모드로 빌드된 `dist/server/entry.mjs` 가 PORT=3000 으로 떠요.
+빌드는 repo 의 `Dockerfile` 로 떠요 — `@astrojs/node` standalone 으로 만든 `dist/server/entry.mjs` 를 `node` 가 PORT=3000 으로 띄워요.
 
-## 5. 환경변수
+## 5. 환경변수 / 설정
 
 | 변수 | 용도 |
 |------|------|
-| `APPHUB_API_URL` | Hub API endpoint |
-| `APPHUB_API_KEY` | Hub API 인증 (Server-side 전용) |
-| `APPHUB_APP_SLUG` | 내 앱 슬러그 |
-| `APPHUB_DATA_BASE_URL` | Data plane base URL |
+| `APPHUB_API_URL` | Hub API origin (`{{API_BASE}}`) |
+| `APPHUB_APP_SLUG` | 내 앱 슬러그 (`{{APP_SLUG}}`) |
+| `APPHUB_TENANT` | 내 테넌트 슬러그 (`{{TENANT}}`) |
+
+axhub 로 배포하면 위 값들은 소스의 `{{...}}` placeholder 치환으로 **자동 주입**돼요. `.env` 는 로컬 테스트용 override. **API key 는 없어요** — 인증은 들어온 요청의 세션 쿠키 포워딩으로.
 
 ## 6. 자주 막히는 곳
 
 | 증상 | 해결 |
 |------|------|
 | 빌드 후 `entry.mjs` 가 없음 | `astro.config.ts` 에 `adapter: node({ mode: "standalone" })` 확인 |
-| 배포 후 502 | `start` 가 PORT=3000 으로 띄우는지 (`apphub.yaml` start 명령 확인) |
-| `<script>` 안에서 axhub 호출 시 에러 | 클라이언트 번들엔 import.meta.env 의 시크릿 안 들어감 — frontmatter 로 옮기세요 |
+| 배포 후 502 | `Dockerfile` 의 `CMD` 가 `node ./dist/server/entry.mjs` 인지, PORT=3000 인지 확인 |
+| `<script>` 안에서 axhub 호출 시 에러 | 브라우저엔 사용자 쿠키 컨텍스트 없음 — frontmatter 로 옮기세요 |
 | 페이지가 갑자기 정적 (변경 안 됨) | `export const prerender = true` 가 어딘가 켜져 있나 확인 |
 
 ## 7. React island 추가하기
@@ -92,9 +94,10 @@ npx astro add react   # config 자동 수정
 ## axhub.ts 신뢰 모델 (이 템플릿)
 
 이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
-axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API (`axhub.fetch / data / slug / isConfigured`) 를 노출해요.
-Transport 만 달라요: 이 템플릿은 `Authorization: Bearer ${process.env.APPHUB_API_KEY}`.
-풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+axhub 헬퍼는 3종 모두 동일한 외부 API (`axhub.fetch / data / slug / isConfigured`) 를 노출해요.
+인증은 axhub 로그인 세션 쿠키(`_hub_access`)로: 호출 시 넘긴 `Astro.request` 쿠키를 백엔드에
+`Authorization: Bearer` 로 포워딩해요. 정적 API key 안 써요.
+풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 8. 라이선스
 

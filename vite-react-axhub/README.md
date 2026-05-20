@@ -1,22 +1,22 @@
 # vite-react-axhub
 
-axhub 위에서 바로 굴러가는 **Vite + React 18 + Tailwind 3** 정적 SPA 템플릿이에요.
+axhub 위에서 바로 굴러가는 **Vite 7 + React 19 + Tailwind 3** 정적 SPA 템플릿이에요.
 **Claude Code** 로 바이브코딩하면서 axhub 에 한 줄 명령으로 배포할 수 있게 미리 세팅돼 있어요.
 
 ## 0. 누가 쓰면 좋아요
 
 비전공자, 비개발자, 기획자, 사무직, 디자이너. 서버 없는 **정적 클라이언트 SPA** 가 필요할 때.
-랜딩 페이지, 계산기, 작은 도구, 데모 같은 거. 백엔드 시크릿이 필요한 작업은
-[express-axhub](../express-axhub) 같은 server-side 템플릿을 같이 써요.
+랜딩 페이지, 계산기, 작은 도구, 데모 같은 거. 인증된 axhub 호출도 로그인 세션 쿠키로
+**직접 돼요** (별도 backend 불필요).
 
 ## 1. 5분 안에 시작
 
 ```bash
-npx degit jocoding-ax-partners/examples/vite-react-axhub my-app
+npx degit jocoding-ax-partners/axhub-template/vite-react-axhub my-app
 cd my-app
 npm install
 cp .env.example .env.local
-# .env.local 의 VITE_APPHUB_* 값을 채워요.
+# .env.local 의 VITE_APPHUB_* 값을 채워요. (axhub 로 배포하면 자동 주입돼요)
 npm run dev
 # http://localhost:5173 에 접속
 ```
@@ -38,14 +38,15 @@ import { axhub } from "../lib/axhub";
 export function UserList() {
   const [users, setUsers] = useState<unknown[]>([]);
   useEffect(() => {
-    axhub.data("/users").then((r) => r.json()).then(setUsers);
+    axhub.data("users").then((r) => r.json()).then(setUsers);
   }, []);
   return <pre>{JSON.stringify(users, null, 2)}</pre>;
 }
 ```
 
-> ⚠️ Vite 의 `VITE_*` 환경변수는 **빌드 결과물에 그대로 박혀요.** 절대 시크릿(API_KEY) 넣지 마요.
-> 시크릿이 필요하면 [express-axhub](../express-axhub) 같은 backend 를 두고 거기서 호출해요.
+> ⚠️ Vite 의 `VITE_*` 환경변수는 **빌드 결과물에 그대로 박혀요.** 절대 시크릿 넣지 마요.
+> 인증은 axhub 로그인 세션 쿠키(`credentials:"include"`)로 동작해요 — API key 가 필요 없어요.
+> 401(미로그인/만료) 이면 헬퍼가 자동으로 silent SSO 로 재인증해요.
 
 ## 4. axhub 에 배포
 
@@ -63,17 +64,18 @@ axhub deploy create --app my-app-slug --branch main
 axhub deploy status dep_xxxxx --watch
 ```
 
-빌드된 `dist/` 가 axhub 에서 nginx 로 정적 서빙돼요.
+빌드된 `dist/` 가 axhub 에서 `Dockerfile` 의 nginx 로 정적 서빙돼요 (SPA fallback 포함).
 
-## 5. 환경변수
+## 5. 환경변수 / 설정
 
 | 변수 | 용도 |
 |------|------|
-| `VITE_APPHUB_API_URL` | Hub API endpoint (브라우저 노출됨) |
-| `VITE_APPHUB_APP_SLUG` | 내 앱 슬러그 |
-| `VITE_APPHUB_DATA_BASE_URL` | Data plane base URL |
+| `VITE_APPHUB_API_URL` | Hub API origin (`{{API_BASE}}`) |
+| `VITE_APPHUB_APP_SLUG` | 내 앱 슬러그 (`{{APP_SLUG}}`) |
+| `VITE_APPHUB_TENANT` | 내 테넌트 슬러그 (`{{TENANT}}`) |
+| `VITE_APPHUB_APP_ORIGIN` | 이 앱 origin — silent SSO return (`{{APP_ORIGIN}}`) |
 
-`API_KEY` 는 의도적으로 빠져 있어요. 정적 SPA 에 시크릿을 박지 않는 게 원칙.
+axhub 로 배포하면 위 값들은 소스의 `{{...}}` placeholder 치환으로 **자동 주입**돼요. `.env.local` 은 로컬 테스트용 override 일 뿐. API key 는 없어요 — 인증은 세션 쿠키로. data API 주소는 `API_URL` + 테넌트/슬러그로 자동 조합돼요.
 
 ## 6. 자주 막히는 곳
 
@@ -81,7 +83,7 @@ axhub deploy status dep_xxxxx --watch
 |------|------|
 | `npm install` 실패 | Node 20+ 인지 `node -v` 확인 |
 | Tailwind class 가 안 먹음 | `tailwind.config.js` 의 `content` 경로 확인 |
-| 배포 후 axhub 호출이 CORS 에러 | axhub backend CORS 설정 또는 같은 도메인 reverse proxy 필요 |
+| axhub 호출이 계속 401 / 로그인 루프 | axhub 에 로그인됐는지 확인. 헬퍼가 silent SSO 로 자동 재인증 시도 |
 | 화면이 빈 흰색 | 콘솔 열어서 에러 확인. 보통 import 경로 오타 |
 
 ## 7. 관련 자료
@@ -92,11 +94,11 @@ axhub deploy status dep_xxxxx --watch
 
 ## axhub.ts 신뢰 모델 (이 템플릿)
 
-이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼는 6개 템플릿 모두 동일한 외부 API
-(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. Transport 만 달라요:
-이 템플릿은 `credentials: "include"` (cookie auth) — **API_KEY 미주입** (브라우저 노출 위험).
-인증 필요 시 `express-axhub` / `hono-axhub` 백엔드 경유.
-풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼는 3종 모두 동일한 외부 API
+(`axhub.fetch / data / slug / isConfigured`) 를 노출해요. 인증은 axhub 로그인 세션 쿠키(`_hub_access`)로:
+이 템플릿은 `credentials: "include"` 로 쿠키를 자동 전송하고, 401 이면 silent SSO 로 재인증해요.
+**시크릿 키 미주입** — 브라우저라 별도 backend 없이 직접 인증돼요.
+풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 8. 라이선스
 

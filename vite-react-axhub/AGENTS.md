@@ -24,7 +24,7 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 ## Framework-Specific Rules (Vite + React, 정적 SPA)
 
 - `VITE_*` 환경변수에 시크릿 (API_KEY 등) **절대 금지**. 빌드 결과물에 그대로 박혀서 누구나 봐요.
-- 인증 필요한 axhub 호출은 **별도 backend** (`express-axhub` 또는 `hono-axhub`) 두고 거기서 처리. 같은 도메인 reverse proxy.
+- 인증된 axhub 호출은 `axhub` 헬퍼로 **직접** 해요 — `credentials:"include"` 가 로그인 세션 쿠키(`_hub_access`)를 보내고, 401 이면 헬퍼가 silent SSO 로 재인증. 별도 backend 불필요.
 - 변경 보고: `file:line` 형식.
 
 ## 절대 규칙 (negative-phrased)
@@ -37,8 +37,8 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (6개 템플릿 동일 외부 API).
-Transport: `credentials: "include"` (cookie auth), **API_KEY 미주입**. 풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (3종 동일 외부 API).
+인증: `credentials: "include"` 로 axhub 세션 쿠키(`_hub_access`) 자동 전송 + 401 시 silent SSO 재인증. **시크릿 키 미주입.** 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포
 

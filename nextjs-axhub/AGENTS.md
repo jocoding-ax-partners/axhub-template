@@ -24,14 +24,14 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 
 ## Framework-Specific Rules (Next.js)
 
-- `lib/axhub.ts` 는 **Server-side 전용**. `"use client"` 컴포넌트에서 import 금지 (`APPHUB_API_KEY` 가 브라우저로 새요).
+- `lib/axhub.ts` 는 **Server-side 전용** (`next/headers` 사용). `"use client"` 컴포넌트에서 import 금지 — 빌드가 깨지고, 사용자 세션 쿠키 포워딩은 서버에서만 돼요.
 - 새 axhub API 호출은 항상 Route Handler (`app/api/.../route.ts`) 또는 Server Action 경유.
 - Tailwind class 는 길어도 분리하지 말고 인라인 유지 (vibe coder 가 한 곳에서 다 보는 게 편함).
 - 변경 보고: `file:line` 형식.
 
 ## 절대 규칙 (negative-phrased)
 
-- DO NOT `APPHUB_API_KEY` 를 클라이언트 컴포넌트 / 응답 본문 / 로그 어디에도 노출.
+- DO NOT `lib/axhub.ts`(server 전용, `next/headers`)를 `"use client"` 컴포넌트에서 import. DO NOT 사용자 세션 쿠키(`_hub_access`)/토큰을 응답 본문·로그에 노출.
 - DO NOT `.env.local` 커밋 (`.gitignore` 막혀있지만 force-add 도 금지).
 - DO NOT 사용자 동의 없이 destructive git (`reset --hard`, `push --force`, `branch -D`).
 - DO NOT 새 npm 패키지 사용자 확인 없이 설치.
@@ -39,8 +39,8 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Next.js) 템플릿은 **server-side**. axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (6개 템플릿 동일 외부 API).
-Transport: `Authorization: Bearer ${process.env.APPHUB_API_KEY}` from server. 풀 비교 표는 [examples README](../README.md#axhubts-신뢰-모델-모든-템플릿) 참고.
+이 (Next.js) 템플릿은 **server-side**. axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (3종 동일 외부 API).
+인증: 들어온 요청의 세션 쿠키(`next/headers` 의 `cookies()` 로 읽은 `_hub_access`)를 백엔드에 `Authorization: Bearer` 로 포워딩. 정적 API key 안 씀. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포
 
