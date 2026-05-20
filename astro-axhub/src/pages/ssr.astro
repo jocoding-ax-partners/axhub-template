@@ -7,7 +7,8 @@ let error: string | null = null;
 
 if (axhub.isConfigured) {
   try {
-    const res = await axhub.fetch("/v1/me");
+    // 들어온 요청의 _hub_access 쿠키를 포워딩해 사용자 자격으로 호출.
+    const res = await axhub.fetch("/api/v1/me", {}, { cookie: Astro.request.headers.get("cookie") });
     const body = await res.json().catch(() => null);
     upstream = { status: res.status, body };
   } catch (err) {
@@ -40,7 +41,7 @@ const ts = new Date().toISOString();
 
     {upstream && (
       <section class="result">
-        <h2>axhub.fetch("/v1/me") 응답</h2>
+        <h2>axhub.fetch("/api/v1/me") 응답</h2>
         <p>HTTP <strong>{upstream.status}</strong></p>
         <pre>{JSON.stringify(upstream.body, null, 2)}</pre>
       </section>
