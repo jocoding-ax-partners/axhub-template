@@ -2,34 +2,80 @@
 import Layout from "../layouts/Layout.astro";
 import { axhub } from "../lib/axhub";
 
-const status = axhub.isConfigured ? "axhub 연결됨" : "환경변수 미설정";
-const slug = axhub.slug || "(미설정)";
+// GET /api/v1/me 응답 (axhub 백엔드). 로그인한 사용자 + 활성 테넌트 멤버십.
+type Me = {
+  user: { id: string; email: string; name: string; platform_admin: boolean };
+  tenants: { tenant_id: string; tenant_slug: string; role: string; is_active: boolean }[];
+};
+
+let me: Me | null = null;
+if (axhub.isConfigured) {
+  try {
+    // frontmatter(서버)에서 들어온 요청의 쿠키를 ctx 로 넘겨 Bearer 포워딩 — 사용자 자격으로 호출.
+    const res = await axhub.fetch("/api/v1/me", {}, { cookie: Astro.request.headers.get("cookie") });
+    if (res.ok) me = (await res.json()) as Me;
+  } catch {
+    /* noop — 아래에서 안내 */
+  }
+}
+const tenant = me?.tenants?.[0];
 ---
 
 <Layout title="axhub × Astro">
   <main>
     <h1>axhub × Astro</h1>
-    <p class="lead">조코딩 AX 파트너스 바이브코딩 템플릿 (Astro 5 SSR)</p>
 
-    <section class="status-card">
-      <div class="row">
-        <span class="label">상태</span>
-        <span class={axhub.isConfigured ? "ok" : "warn"}>{status}</span>
-      </div>
-      <div class="row">
-        <span class="label">앱 슬러그</span>
-        <code>{slug}</code>
-      </div>
+    {/* 환영 — GET /api/v1/me 결과 */}
+    <section class="card welcome">
+      {
+        me ? (
+          <Fragment>
+            <p class="hello">환영합니다, {me.user.name}님 👋</p>
+            <p class="sub">
+              {me.user.email}
+              {tenant ? ` · ${tenant.tenant_slug} (${tenant.role})` : ""}
+            </p>
+          </Fragment>
+        ) : (
+          <p class="warn">
+            {axhub.isConfigured
+              ? "로그인 정보를 불러오지 못했어요. axhub 로그인 상태를 확인해 주세요."
+              : "로컬 실행 중 — axhub 로 배포하면 로그인한 사용자가 여기 표시돼요."}
+          </p>
+        )
+      }
+    </section>
+
+    {/* 백엔드 호출 치트시트 */}
+    <section class="card">
+      <h2>백엔드, 이렇게 호출해요 (서버에서)</h2>
+
+      <p class="hint">내 정보 · Hub API — 위 환영 메시지가 이 호출 결과예요</p>
+      <pre><code>{`const res = await axhub.fetch("/api/v1/me", {}, {
+  cookie: Astro.request.headers.get("cookie"),
+});
+const me = await res.json(); // { user, tenants }`}</code></pre>
+
+      <p class="hint">앱 데이터 — 동적 테이블 CRUD</p>
+      <pre><code>{`const ctx = { cookie: Astro.request.headers.get("cookie") };
+// GET  {API_BASE}/data/{tenant}/{app}/todos
+const list = await (await axhub.data("todos", {}, ctx)).json();
+await axhub.data("todos", { method: "POST", body: JSON.stringify({ title: "할 일" }) }, ctx);`}</code></pre>
+
+      <p class="note">
+        Astro 는 전역 쿠키 접근이 없어서 <code>Astro.request</code> 의 쿠키를 ctx 로 넘겨요. 헬퍼가
+        <code>_hub_access</code> 를 <code>Bearer</code> 로 포워딩해 사용자 자격으로 호출해요. 정적 API 키 안 써요.
+      </p>
+      <p class="slug">이 앱 슬러그: <code>{axhub.slug || "(로컬 실행)"}</code></p>
     </section>
 
     <ol>
-      <li><code>src/pages/index.astro</code> 를 열어서 마음대로 바꿔봐요.</li>
-      <li>저장하면 즉시 반영돼요 (HMR).</li>
-      <li>SSR 데모는 <a href="/ssr">/ssr</a> 에서 확인.</li>
+      <li><code>src/pages/index.astro</code> 를 열어 화면을 바꿔봐요.</li>
+      <li>원본 <code>/me</code> 응답을 그대로 보고 싶으면 <a href="/ssr">/ssr</a>.</li>
       <li>다 만들었으면 Claude Code 에서 <code>/axhub:deploy</code>.</li>
     </ol>
 
-    <footer>Astro 5 · Node 20+ · TypeScript</footer>
+    <footer>Astro · Node · TypeScript</footer>
   </main>
 </Layout>
 
@@ -41,41 +87,68 @@ const slug = axhub.slug || "(미설정)";
   }
   h1 {
     font-size: 2rem;
-    margin: 0 0 0.5rem;
+    margin: 0 0 1.5rem;
   }
-  .lead {
-    color: var(--color-muted);
-    margin-top: 0;
-  }
-  .status-card {
-    margin: 2rem 0;
-    padding: 1rem;
+  .card {
+    margin: 1.25rem 0;
+    padding: 1.25rem;
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
   }
-  .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.25rem 0;
+  .welcome {
+    text-align: center;
   }
-  .label {
+  .hello {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .sub {
     color: var(--color-muted);
     font-size: 0.9rem;
-  }
-  .ok {
-    color: var(--color-ok);
-    font-weight: 600;
+    margin: 0.35rem 0 0;
   }
   .warn {
     color: var(--color-warn);
     font-weight: 600;
+    margin: 0;
+  }
+  h2 {
+    font-size: 0.95rem;
+    margin: 0 0 0.75rem;
+  }
+  .hint {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+    margin: 0.75rem 0 0.25rem;
+  }
+  .note {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    margin: 0.75rem 0 0;
+  }
+  .slug {
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    margin: 0.5rem 0 0;
+  }
+  pre {
+    background: #f3f4f6;
+    padding: 0.85rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    margin: 0;
+  }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   ol {
     line-height: 1.8;
   }
   footer {
-    margin-top: 3rem;
+    margin-top: 2.5rem;
     color: var(--color-muted);
     font-size: 0.85rem;
   }
