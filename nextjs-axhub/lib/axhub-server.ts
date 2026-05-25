@@ -16,7 +16,7 @@
 // 설정값은 axhub bootstrap 이 배포 시 {{...}} placeholder 를 치환해 박아요.
 // 로컬에서 직접 돌릴 땐 .env 의 APPHUB_* 가 우선해요.
 import { cookies } from 'next/headers'
-import { AxHubClient, type TenantScopedClient, type AppScopedClient, type GatewayQueryResult } from '@ax-hub/sdk'
+import { AxHubClient, type TenantScopedClient, type AppScopedClient, type TenantGatewayClient, type GatewayQueryResult } from '@ax-hub/sdk'
 
 const API_BASE = process.env.APPHUB_API_URL || '{{API_BASE}}'
 export const APP_SLUG = process.env.APPHUB_APP_SLUG || '{{APP_SLUG}}'
@@ -76,7 +76,7 @@ export async function makeTenant(): Promise<TenantScopedClient> {
 
 // Gateway 전용 스코프. ⚠️ gateway 엔드포인트는 tenant 경로에 *UUID* 를 요구해요 (slug 거부 → 400 invalid_format).
 // slug 기반인 makeTenant() 로는 gateway 가 안 돼요. me() 로 현재 tenant 의 UUID 를 받아 스코프해요.
-export async function makeGateway() {
+export async function makeGateway(): Promise<TenantGatewayClient> {
   const sdk = await makeAxhub()
   const me = await sdk.identity.me()
   const tenant = me.tenants?.find((t) => t.tenantSlug === TENANT)
