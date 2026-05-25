@@ -54,55 +54,47 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 - ❌ `"use client"` 컴포넌트에서 `makeAxhub` / `makeApp` import — `next/headers` 가 server-only 라 빌드 깨져요.
 - 클라이언트에서 백엔드가 필요하면 Route Handler (`app/api/.../route.ts`) 거치게.
 
-### S6. Gateway query — 외부 DB/SaaS 조회는 SDK gateway.query 만
+### S6. Gateway query — 외부 DB/SaaS 조회는 `queryConnector()` 로
 > **이 기능은 핵심.** 외부 시스템(자체 PostgreSQL/MySQL/SaaS connector) 데이터를 axhub 가 만든 데이터처럼 안전하게 읽어요.
-> 모든 호출은 audit log 에 기록되고 (`auditEventId` 반환), connector 권한 정책으로 게이트돼요. 직접 DB 접속 금지.
+> 모든 호출은 audit log 에 기록되고, connector 권한 정책으로 게이트돼요. 직접 DB 접속 금지.
 
-#### 기본 사용
+> ⚠️ **gateway 는 tenant 경로에 UUID 를 요구해요 (slug 거부 → 400 invalid_format).** slug 기반 `makeTenant()` 로는 gateway 가 안 돼요.
+> `lib/axhub-server.ts` 의 `makeGateway()` (me() 로 tenant UUID 자동 스코프) / `queryConnector()` 를 쓰세요.
+
+#### 기본 사용 — connector "이름" 으로 (UUID 자동 resolve)
 ```ts
-import { makeTenant } from '@/lib/axhub-server'
-// gateway 는 tenant 스코프 (앱 스코프 아님) — 반드시 makeTenant() 또는 sdk.tenant(slug).gateway.
-const t = await makeTenant()
-const res = await t.gateway.query.run<{ id: number; name: string }>({
-  connectorId: 'a2763ffa-bd26-4d6d-933c-f5dc54722a27', // gateway.connectors.list() 로 확인
-  path: 'employees',                                    // 연결된 connector 안의 리소스 경로/테이블명
-  sql: 'SELECT id, name FROM employees WHERE active = $1 LIMIT $2',
-  params: [true, 10],                                   // ✅ 항상 parameterized — SQL injection 방지
-  rowLimit: 10,                                         // 옵션: 결과 cap (백엔드 정책과 함께 동작)
+import { queryConnector } from '@/lib/axhub-server'
+const res = await queryConnector<{ id: number; name: string }>({
+  connector: 'my-db',          // connector 이름 (gateway.connectors.list() 의 .name) — UUID 아님, helper 가 resolve
+  path: 'public/employees',    // connector 안 리소스 경로/테이블
+  sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
+  params: [true, 10],          // ✅ 항상 parameterized — SQL injection 방지
+  rowLimit: 10,                // 옵션: 결과 cap
 })
-// res.rows: Row[]  · res.rowCount  · res.auditEventId (사후 추적용)
+// res.rows: 컬럼명으로 매핑된 객체 배열 · res.rowCount · res.columns · res.allowed=false 면 정책 deny (res.denyReason)
 ```
 
-#### 어떤 connector 가 있나
+#### 저수준 — 직접 스코프가 필요할 때
 ```ts
-const engines    = await t.gateway.engines.list()        // postgres / mysql / ... + capabilities
-const connectors = await t.gateway.connectors.list({ limit: 50 })
-const resources  = await t.gateway.resources.list({ limit: 50 })  // connector 안의 노출 리소스
+import { makeGateway } from '@/lib/axhub-server'
+const gw = await makeGateway()                  // tenant UUID 로 스코프된 gateway (makeTenant 아님!)
+const connectors = await gw.connectors.list()   // 배열 반환 — .find(c => c.name === 'my-db') 로 UUID 확보
+const engines    = await gw.engines.list()      // postgres / mysql / ... + capabilities
+const res = await gw.query.run({ connectorId: connectors[0].id, path: 'schema/table', sql: 'SELECT 1' })
 ```
-- `connectors.create()` / `update()` / `delete()` 는 admin ring — 평일 운영은 reader 가 read-only 권장.
-- `connectorId` 와 `resourceId` 둘 다 받아요. 보통은 `connectorId` + `path` 조합 사용.
-
-#### 큰 결과 스트리밍 (SSE)
-```ts
-const stream = t.gateway.query.stream<{ id: number }>({
-  connectorId: 'a2763ffa-...',
-  path: 'big_table',
-  sql: 'SELECT id FROM big_table',
-})
-for await (const ev of stream) {
-  if (ev.type === 'item') console.log(ev.value.id)
-}
-// AbortSignal 로 도중 취소 가능 (opts.signal).
-```
+- `connectors.list()` / `resources.list()` 는 **배열** 반환 (pagination 봉투 아님).
+- `connectors.create()` / `update()` / `delete()` 는 admin ring — 평일 운영은 read-only 권장.
 
 #### 절대 규칙 (Gateway)
-- ✅ **항상 parameterized SQL** — `$1, $2 ...` + `params: [...]`. 사용자 입력을 SQL 문자열에 직접 박지 마요.
-- ✅ `connectorId` / `path` 는 코드 상수 또는 admin 이 발급한 ID — 사용자 입력으로 바꾸지 마요 (권한 우회 위험).
+- ✅ `queryConnector()` 우선 — connector 이름만 넘기면 connector UUID·tenant UUID 스코프를 helper 가 처리.
+- ✅ **항상 parameterized SQL** — placeholder + `params: [...]`. 사용자 입력을 SQL 문자열에 직접 박지 마요.
+- ✅ `connector` / `path` / `sql` 은 코드 상수 — 사용자 값은 `params` 로만 (권한 우회·injection 방지).
 - ✅ `rowLimit` 명시 — 무한 결과 방지.
-- ✅ 에러 분기: `PoolStaleError` (401, 자격 만료 → 재시도/안내), `AxHubError.code === 'pool_stale'` 도 동일. 권한은 `PermissionDeniedError`.
-- ❌ raw user input 을 그대로 `sql` 에 넣지 마요 — `params` 로 분리.
-- ❌ 모듈-레벨에 `gateway.query` 결과 캐싱 금지 — 자격 + 데이터가 사용자별로 달라요.
-- ❌ `auditEventId` 무시 — 감사 가능 액션은 응답에 같이 보여주세요 ("이 조회 기록 ID: xxx").
+- ✅ `res.allowed === false` 확인 — 정책으로 가려진 결과 (`res.denyReason`).
+- ✅ 에러 분기: `PoolStaleError` (401, 자격 만료), `PermissionDeniedError` (정책 거부), `AxHubError.code`.
+- ❌ `makeTenant()` (slug) 로 gateway 호출 — tenant UUID 가 아니라 **400 invalid_format**. `makeGateway()` / `queryConnector()` 만.
+- ❌ connector UUID 하드코딩 — connector 이름으로 넘기면 자동 resolve.
+- ❌ 모듈-레벨에 gateway 결과 캐싱 — 자격·데이터가 사용자별로 달라요.
 
 ### S7. Query DSL — `where()` / `and()` / `or()` / `raw()` 만 사용
 > 데이터 API (`app.data.discover` / `app.data.table(Schema)`) 의 `list` / `count` 의 `where` 인자는 **DSL 객체** 만 받아요.
@@ -247,17 +239,16 @@ try {
   else throw err
 }
 
-// 5) Gateway query — 외부 DB / SaaS connector 조회 (tenant 스코프)
-import { makeTenant } from '@/lib/axhub-server'
-const t = await makeTenant()
-const employees = await t.gateway.query.run<{ id: number; name: string }>({
-  connectorId: 'a2763ffa-bd26-4d6d-933c-f5dc54722a27',
-  path: 'employees',
-  sql: 'SELECT id, name FROM employees WHERE active = $1 LIMIT $2',
+// 5) Gateway query — 외부 DB / SaaS connector 조회 (connector 이름으로; helper 가 tenant UUID + connector UUID resolve)
+import { queryConnector } from '@/lib/axhub-server'
+const employees = await queryConnector<{ id: number; name: string }>({
+  connector: 'my-db',     // connector 이름 (UUID 아님)
+  path: 'public/employees',
+  sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',
   params: [true, 10],     // ✅ 항상 parameterized
   rowLimit: 10,
 })
-// employees.rows / employees.rowCount / employees.auditEventId
+// employees.rows (컬럼 매핑된 객체) / employees.rowCount / employees.allowed
 
 // 6) Query DSL — 데이터 API filter
 const filter = and(

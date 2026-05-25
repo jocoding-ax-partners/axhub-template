@@ -73,16 +73,16 @@ await todos.insert({ title: "할 일", done: false });`}</code></pre>
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs text-gray-500">Gateway — 외부 DB/SaaS 조회 (parameterized SQL, audit log)</p>
-          <pre className="text-sm bg-gray-100 rounded-lg p-3 overflow-x-auto"><code>{`import { makeTenant } from "@/lib/axhub-server";
-const t = await makeTenant(); // gateway 는 tenant 스코프
-const res = await t.gateway.query.run({
-  connectorId: "a2763ffa-bd26-4d6d-933c-f5dc54722a27",
-  path: "employees",
-  sql: "SELECT id, name FROM employees WHERE active = $1 LIMIT $2",
-  params: [true, 10],            // ✅ 항상 parameterized
+          <p className="text-xs text-gray-500">Gateway — 외부 DB/SaaS 조회 (connector 이름으로, parameterized SQL, audit log)</p>
+          <pre className="text-sm bg-gray-100 rounded-lg p-3 overflow-x-auto"><code>{`import { queryConnector } from "@/lib/axhub-server";
+// connector 이름만 — UUID·tenant 스코프는 helper 가 자동 처리 (connectors.list() 로 resolve)
+const res = await queryConnector<{ id: number; name: string }>({
+  connector: "my-db",           // connector 이름 (UUID 아님)
+  path: "public/employees",     // connector 안 리소스 경로
+  sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?",
+  params: [true, 10],           // ✅ 항상 parameterized
 });
-// res.rows / res.rowCount / res.auditEventId`}</code></pre>
+// res.rows (컬럼 매핑된 객체) / res.rowCount / res.allowed (false 면 정책 deny)`}</code></pre>
         </div>
 
         <div className="space-y-1">

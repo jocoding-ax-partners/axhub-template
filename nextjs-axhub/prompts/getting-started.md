@@ -31,11 +31,12 @@ ConflictError / ValidationError 분기 처리. 저장 성공하면 "감사합니
 ## 3-A. Gateway query — 외부 DB 조회 페이지
 
 ```
-app/employees 라우트 만들어줘. lib/axhub-server.ts 의 makeTenant() 로
-t.gateway.query.run({ connectorId: "<connectorId>", path: "employees",
-sql: "SELECT id, name FROM employees WHERE active = $1 LIMIT $2", params: [true, 20] })
-호출해서 결과 테이블 렌더. connectorId 는 코드 상수로, 사용자 입력으로 바꾸지 마.
-PoolStaleError / PermissionDeniedError 분기 처리. res.auditEventId 푸터에 노출.
+app/employees 라우트 만들어줘. lib/axhub-server.ts 의 queryConnector() 로
+const res = await queryConnector({ connector: "my-db", path: "public/employees",
+sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?", params: [true, 20] })
+호출해서 res.rows 를 테이블로 렌더. connector 는 "이름" 으로 넘기면 helper 가 UUID 를 자동 resolve 해.
+connector / sql 은 코드 상수로 (사용자 입력은 반드시 params 로). res.allowed === false 면 정책 deny 안내.
+AxHubError 는 .code 로 분기 (PoolStaleError / PermissionDeniedError).
 ```
 
 ## 3-B. Query DSL — 필터된 목록

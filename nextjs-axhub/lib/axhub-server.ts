@@ -11,11 +11,12 @@
 //   const me  = await sdk.identity.me               // GET /api/v1/me, 사용자 자격
 //   const app = await makeApp()                     // sdk.tenant(TENANT).app(APP_SLUG)
 //   const orders = await app.data.discover('orders')
+//   const { rows } = await queryConnector({ connector: 'my-db', path: 'schema/table', sql: 'SELECT ... LIMIT ?', params: [100] })
 //
 // 설정값은 axhub bootstrap 이 배포 시 {{...}} placeholder 를 치환해 박아요.
 // 로컬에서 직접 돌릴 땐 .env 의 APPHUB_* 가 우선해요.
 import { cookies } from 'next/headers'
-import { AxHubClient, type TenantScopedClient, type AppScopedClient } from '@ax-hub/sdk'
+import { AxHubClient, type TenantScopedClient, type AppScopedClient, type GatewayQueryResult } from '@ax-hub/sdk'
 
 const API_BASE = process.env.APPHUB_API_URL || '{{API_BASE}}'
 export const APP_SLUG = process.env.APPHUB_APP_SLUG || '{{APP_SLUG}}'
@@ -71,4 +72,52 @@ export async function makeApp(): Promise<AppScopedClient> {
 export async function makeTenant(): Promise<TenantScopedClient> {
   const sdk = await makeAxhub()
   return sdk.tenant(TENANT)
+}
+
+// Gateway 전용 스코프. ⚠️ gateway 엔드포인트는 tenant 경로에 *UUID* 를 요구해요 (slug 거부 → 400 invalid_format).
+// slug 기반인 makeTenant() 로는 gateway 가 안 돼요. me() 로 현재 tenant 의 UUID 를 받아 스코프해요.
+export async function makeGateway() {
+  const sdk = await makeAxhub()
+  const me = await sdk.identity.me()
+  const tenant = me.tenants?.find((t) => t.tenantSlug === TENANT)
+  if (!tenant) {
+    throw new Error(
+      `현재 로그인 사용자가 tenant '${TENANT}' 의 멤버가 아니에요. ` +
+        'gateway 는 이 tenant 의 UUID 가 필요해요 — APPHUB_TENANT 설정과 로그인 계정을 확인해 주세요.',
+    )
+  }
+  return sdk.tenant(tenant.tenantId).gateway
+}
+
+// 외부 DB/SaaS connector 조회 — connector "이름" 으로 호출하면 UUID 를 자동 resolve 해요 (UUID 하드코딩 불필요).
+// gateway 함정(tenant UUID 스코프 · connector UUID · parameterized SQL)을 전부 감싼 편의 helper.
+//
+//   const { rows } = await queryConnector<{ id: number; name: string }>({
+//     connector: 'my-db',          // connector 이름 (gateway.connectors.list() 의 .name) — UUID 아님
+//     path: 'public/employees',    // connector 안 리소스 경로 (스키마/테이블)
+//     sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
+//     params: [true, 100],         // ✅ 항상 parameterized — 사용자 입력을 sql 문자열에 직접 박지 마요
+//   })
+//   // rows: 컬럼명으로 매핑된 객체 배열 · res.allowed=false 면 정책 deny (res.denyReason) · res.columns 메타
+export async function queryConnector<Row extends Record<string, unknown> = Record<string, unknown>>(input: {
+  connector: string
+  path: string
+  sql: string
+  params?: unknown[]
+  rowLimit?: number
+}): Promise<GatewayQueryResult<Row>> {
+  const gw = await makeGateway()
+  const connectors = await gw.connectors.list()
+  const connector = connectors.find((c) => c.name === input.connector)
+  if (!connector) {
+    const names = connectors.map((c) => c.name).join(', ') || '(없음)'
+    throw new Error(`connector '${input.connector}' 를 찾지 못했어요. 사용 가능: ${names}`)
+  }
+  return gw.query.run<Row>({
+    connectorId: connector.id,
+    path: input.path,
+    sql: input.sql,
+    params: input.params ?? [],
+    ...(input.rowLimit !== undefined ? { rowLimit: input.rowLimit } : {}),
+  })
 }
