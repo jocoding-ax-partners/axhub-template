@@ -67,7 +67,7 @@ import { queryConnector } from '@/lib/axhub-server'
 const res = await queryConnector<{ id: number; name: string }>({
   connector: 'my-db',          // connector 이름 (gateway.connectors.list() 의 .name) — UUID 아님, helper 가 resolve
   path: 'public/employees',    // connector 안 리소스 경로/테이블
-  sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
+  sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
   params: [true, 10],          // ✅ 항상 parameterized — SQL injection 방지
   rowLimit: 10,                // 옵션: 결과 cap
 })
@@ -86,6 +86,7 @@ const res = await gw.query.run({ connectorId: connectors[0].id, path: 'schema/ta
 - `connectors.create()` / `update()` / `delete()` 는 admin ring — 평일 운영은 read-only 권장.
 
 #### 절대 규칙 (Gateway)
+- ✅ **PostgreSQL SQL 테이블명은 스키마 포함 필수** — `path: 'schema/table'` 이면 SQL 도 `FROM schema.table`. `FROM table` 만 쓰면 `AxHubError(internal_error)` 발생. path 의 `'/'`를 `'.'`으로 바꾸면 돼요.
 - ✅ `queryConnector()` 우선 — connector 이름만 넘기면 connector UUID·tenant UUID 스코프를 helper 가 처리.
 - ✅ **항상 parameterized SQL** — placeholder + `params: [...]`. 사용자 입력을 SQL 문자열에 직접 박지 마요.
 - ✅ `connector` / `path` / `sql` 은 코드 상수 — 사용자 값은 `params` 로만 (권한 우회·injection 방지).
@@ -244,7 +245,7 @@ import { queryConnector } from '@/lib/axhub-server'
 const employees = await queryConnector<{ id: number; name: string }>({
   connector: 'my-db',     // connector 이름 (UUID 아님)
   path: 'public/employees',
-  sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',
+  sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수
   params: [true, 10],     // ✅ 항상 parameterized
   rowLimit: 10,
 })
