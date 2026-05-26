@@ -93,7 +93,7 @@ export async function makeGateway(): Promise<TenantGatewayClient> {
 // gateway 함정(tenant UUID 스코프 · connector UUID · parameterized SQL)을 전부 감싼 편의 helper.
 //
 //   const { rows } = await queryConnector<{ id: number; name: string }>({
-//     connector: 'my-db',          // connector 이름 (gateway.connectors.list() 의 .name) — UUID 아님
+//     connector: 'my-db',          // connector 이름 (gateway.catalog.listConnectors() 의 .name) — UUID 아님
 //     path: 'public/employees',    // connector 안 리소스 경로 (스키마/테이블)
 //     sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
 //     params: [true, 100],         // ✅ 항상 parameterized — 사용자 입력을 sql 문자열에 직접 박지 마요
@@ -107,7 +107,7 @@ export async function queryConnector<Row extends Record<string, unknown> = Recor
   rowLimit?: number
 }): Promise<GatewayQueryResult<Row>> {
   const gw = await makeGateway()
-  const connectors = await gw.connectors.list()
+  const connectors = await gw.catalog.listConnectors()
   const connector = connectors.find((c) => c.name === input.connector)
   if (!connector) {
     const names = connectors.map((c) => c.name).join(', ') || '(없음)'
