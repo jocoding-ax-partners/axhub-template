@@ -95,7 +95,7 @@ export async function makeGateway(): Promise<TenantGatewayClient> {
 //   const { rows } = await queryConnector<{ id: number; name: string }>({
 //     connector: 'my-db',          // connector 이름 (gateway.catalog.listConnectors() 의 .name) — UUID 아님
 //     path: 'public/employees',    // connector 안 리소스 경로 (스키마/테이블)
-//     sql: 'SELECT id, name FROM employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
+//     sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수 (path 의 '/'→'.' 변환)
 //     params: [true, 100],         // ✅ 항상 parameterized — 사용자 입력을 sql 문자열에 직접 박지 마요
 //   })
 //   // rows: 컬럼명으로 매핑된 객체 배열 · res.allowed=false 면 정책 deny (res.denyReason) · res.columns 메타
