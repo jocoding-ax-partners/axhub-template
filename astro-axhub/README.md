@@ -63,6 +63,8 @@ axhub deploy status dep_xxxxx --watch
 
 빌드는 repo 의 `Dockerfile` 로 떠요 — `@astrojs/node` standalone 으로 만든 `dist/server/entry.mjs` 를 `node` 가 PORT=3000 으로 띄워요.
 
+`axhub.yaml` 을 새로 쓰거나 고칠 때는 `axhub.yaml.example` 에 백엔드가 실제로 받는 필드와 제약을 모두 적어뒀으니 먼저 참고하세요.
+
 ## 5. 환경변수 / 설정
 
 | 변수 | 용도 |

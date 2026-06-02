@@ -142,6 +142,8 @@ axhub deploy create --app my-app-slug --branch main
 axhub deploy status dep_xxxxx --watch
 ```
 
+`axhub.yaml` 을 새로 쓰거나 고칠 때는 `axhub.yaml.example` 에 백엔드가 실제로 받는 필드와 제약을 모두 적어뒀으니 먼저 참고하세요.
+
 빌드는 repo 의 `Dockerfile`(`output:"standalone"` → `node server.js`)로 떠요.
 
 ## 5. 환경변수 / 설정
