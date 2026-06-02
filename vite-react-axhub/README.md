@@ -66,7 +66,7 @@ axhub deploy status dep_xxxxx --watch
 
 빌드된 `dist/` 가 axhub 에서 `Dockerfile` 의 nginx 로 정적 서빙돼요 (SPA fallback 포함).
 
-`axhub.yaml` 을 새로 쓰거나 고칠 때는 `axhub.yaml.example` 에 백엔드가 실제로 받는 필드와 제약을 모두 적어뒀으니 먼저 참고하세요.
+`axhub.yaml` 을 새로 쓰거나 고칠 때는 `axhub.yaml.example` 에 axhub.yaml 에서 쓸 수 있는 필드와 제약을 모두 적어뒀으니 먼저 참고하세요.
 
 ## 5. 환경변수 / 설정
 

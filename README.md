@@ -54,7 +54,7 @@ npm run dev
 
 - **`Dockerfile`** — axhub 가 이걸로 빌드해요
 - **`axhub.yaml`** — 포트·헬스체크, Dockerfile, 배포 방식 설정
-- **`axhub.yaml.example`** — 에이전트가 새 manifest 를 쓸 때 참고하는 전체 필드 계약
+- **`axhub.yaml.example`** — 에이전트가 새 axhub.yaml 을 쓸 때 참고하는 전체 필드 예시
 - **`.env.example`** — 로컬 테스트용 환경변수 템플릿
 - **`lib/axhub.*`** — Hub API 호출 헬퍼 (Server / 브라우저 변형)
 - **`CLAUDE.md`** — Claude Code 가이드 / 행동 규칙
