@@ -2,7 +2,7 @@ version: axhub/v1
 name: astro-axhub
 runtime:
   port: 3000
-  health_path: /
+  health_path: /healthz
 build:
   strategy: auto
   framework: astro
