@@ -169,7 +169,7 @@ export async function axhubFetch(path: string, init: RequestInit = {}): Promise<
 > silent SSO endpoint `/auth/silent/start?return_origin=` 는 실재 확인됨 (`identity/inbound/http`), `_hub_hint` 쿠키가 prompt=none 재인증을 구동. spec 299 PR #76 이 return_origin 매처를 DynamicAllowList 로 통일 → user-app host 매칭 통과.
 
 **nextjs/astro (server) — 결정(Q1): 사용자 세션 JWT 포워딩, 정적 API key 폐기.**
-백엔드 인증 체인은 `JWT(Bearer 또는 _hub_access 쿠키) → PAT → RequireAuth` 이고, `_hub_access` 는 apex 도메인(`AXHUB_COOKIE_DOMAIN=jocodingax.ai`)에 발급돼 모든 서브도메인(user app 포함)에 공유된다 (검증: `httpx/middleware.go`, `auth_handlers.go`). 따라서 server 템플릿도 정적 `APPHUB_API_KEY` 가 아니라 **사용자 세션 자격**을 쓴다:
+백엔드 인증 체인은 `JWT(Bearer 또는 _hub_access 쿠키) → PAT → RequireAuth` 이고, `_hub_access` 는 apex 도메인(`AXHUB_COOKIE_DOMAIN=axhub.ai`)에 발급돼 모든 서브도메인(user app 포함)에 공유된다 (검증: `httpx/middleware.go`, `auth_handlers.go`). 따라서 server 템플릿도 정적 `APPHUB_API_KEY` 가 아니라 **사용자 세션 자격**을 쓴다:
 
 - **사용자 식별**: L2 게이트가 진입 시 주입한 `X-AxHub-*` 헤더를 incoming request 에서 읽음 (backend `/me` 호출 0 — spec 298).
 - **data 호출**: incoming request 의 `_hub_access` 를 꺼내 backend 에 `Authorization: Bearer <jwt>` 로 **포워딩** (Cookie 헤더로 보내도 됨). server-to-server 라 CORS 무관.

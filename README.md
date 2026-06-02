@@ -88,7 +88,7 @@ axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placehold
 
 | placeholder | 치환값 | 용도 |
 |------|--------|------|
-| `{{API_BASE}}` | `https://axhub-api...` | Hub API origin |
+| `{{API_BASE}}` | `https://api.axhub.ai` | Hub API origin |
 | `{{APP_SLUG}}` | 내 앱 슬러그 | 앱 식별자 |
 | `{{TENANT}}` | 내 테넌트 슬러그 | data API 경로 |
 | `{{APP_ORIGIN}}` | `https://{앱}.{테넌트}...` | silent SSO return origin (브라우저) |
