@@ -14,7 +14,7 @@
 | [**vite-react-axhub**](./vite-react-axhub) | 정적 SPA (랜딩, 계산기, 도구) | Vite 7 + React 19 + Tailwind 3 | 브라우저 (정적) |
 | [**astro-axhub**](./astro-axhub) | 콘텐츠 사이트 (블로그, 문서, 랜딩) | Astro 5 SSR + Node | 서버 (SSR) |
 
-> 3종 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요. `apphub.yaml` 은 구버전 CLI 호환용으로만 남겨요.
+> 3종 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요.
 
 처음이면 **`nextjs-axhub`** 부터 시작하세요. 가장 보편적이고 LLM 도 가장 잘 짜요.
 
@@ -54,7 +54,6 @@ npm run dev
 
 - **`Dockerfile`** — axhub 가 이걸로 빌드해요
 - **`axhub.yaml`** — 포트·헬스체크, Dockerfile, 배포 방식 설정
-- **`apphub.yaml`** — 구버전 CLI 호환용 legacy 설정
 - **`.env.example`** — 로컬 테스트용 환경변수 템플릿
 - **`lib/axhub.*`** — Hub API 호출 헬퍼 (Server / 브라우저 변형)
 - **`CLAUDE.md`** — Claude Code 가이드 / 행동 규칙

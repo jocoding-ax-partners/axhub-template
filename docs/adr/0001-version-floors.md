@@ -108,4 +108,4 @@ P5 (Convergence) 는 다음에만 적용됩니다:
 
 - `b179733` 직전: 템플릿 초기 ship + verification (당시 6종)
 - `11a3a0a`: express/hono/remix 제거 → vite-react / nextjs / astro 3종
-- `feat/bootstrap-prep` (spec 299 후속): Dockerfile + apphub.yaml 정리, lib/axhub 인증·설정 정합, 본 ADR 개정
+- `feat/bootstrap-prep` (spec 299 후속): Dockerfile + axhub.yaml 정리, lib/axhub 인증·설정 정합, 본 ADR 개정

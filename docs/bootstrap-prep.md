@@ -1,4 +1,4 @@
-# bootstrap 준비 — Dockerfile + apphub.yaml 정리 + lib/axhub 설정 주입 + ADR 현행화
+# bootstrap 준비 — Dockerfile + axhub.yaml 정리 + lib/axhub 설정 주입 + ADR 현행화
 
 > **상태:** Draft — 설계 결정 6/6 확정 (Open Questions 섹션). 구현 PR 대기. 작성: 2026-05-20, ksro0128 (초안: Claude).
 > **목적:** ax-hub-backend 의 spec 299 (app-bootstrap) 백엔드는 머지됐는데, 이 repo 3종에 **Dockerfile 이 없어** bootstrap 을 실제로 돌리면 배포 resolve 단계에서 깨진다. 이 문서는 그 후속 — 이 repo 를 bootstrap end-to-end 동작하도록 준비.
@@ -44,13 +44,13 @@ ADR-0001 의 **P5 carve-out** 그대로 — "전송(server Bearer vs browser coo
 
 또 3종 전부 **`{{...}}` placeholder 를 0개 사용** (build-time env-var 방식). 백엔드 saga 의 치환 모델(§4)과 안 맞음 → §3.3.
 
-### 2.3 apphub.yaml — dead 필드 + 오해 소지 주석
+### 2.3 axhub.yaml — dead 필드 + 오해 소지 주석
 
 백엔드 resolver 가 *실제로 읽는* 필드: `runtime.port`, `runtime.health_path`(probe 가 사용), `build.{deploy_method, dockerfile, compose_file, framework(라벨)}`, `ci.commands`.
 
-현재 apphub.yaml 의 **dead 필드** (resolver 가 안 읽음): `name`, `build.install`, `build.build`, `build.start`.
+현재 axhub.yaml 의 **dead 필드** (resolver 가 안 읽음): `name`, `build.install`, `build.build`, `build.start`.
 
-> ⚠️ 현재 apphub.yaml 주석이 *"backend 가 vite.config/next.config 를 자동 감지해서 preset 으로 배포"* 라는데 **사실 아님**. resolver 에 framework preset / Dockerfile 자동생성 로직은 없다 — `framework` 는 라벨일 뿐, **Dockerfile 은 반드시 존재해야** 한다. 주석 정정 (§3.2).
+> ⚠️ 현재 axhub.yaml 주석이 *"backend 가 vite.config/next.config 를 자동 감지해서 preset 으로 배포"* 라는데 **사실 아님**. resolver 에 framework preset / Dockerfile 자동생성 로직은 없다 — `framework` 는 라벨일 뿐, **Dockerfile 은 반드시 존재해야** 한다. 주석 정정 (§3.2).
 
 ### 2.4 ADR-0001 이 stale
 
@@ -62,7 +62,7 @@ ADR-0001 의 **P5 carve-out** 그대로 — "전송(server Bearer vs browser coo
 
 ### 3.1 Dockerfile 3장
 
-백엔드 resolver 는 `EXPOSE` 첫 포트를 containerPort 로 추론(`runtime.port` override 가능) → **EXPOSE 와 apphub.yaml `runtime.port` 일치**.
+백엔드 resolver 는 `EXPOSE` 첫 포트를 containerPort 로 추론(`runtime.port` override 가능) → **EXPOSE 와 axhub.yaml `runtime.port` 일치**.
 
 **vite-react (browser → nginx):**
 ```dockerfile
@@ -129,10 +129,10 @@ server {
 }
 ```
 
-### 3.2 apphub.yaml 정리 (3종)
+### 3.2 axhub.yaml 정리 (3종)
 
 - dead 필드 제거: `name`, `build.install`, `build.build`, `build.start`.
-- 오해 소지 주석 교체: "자동 감지 preset" → "Dockerfile 로 빌드. apphub.yaml 은 port/health_path override 만".
+- 오해 소지 주석 교체: "자동 감지 preset" → "Dockerfile 로 빌드. axhub.yaml 은 port/health_path override 만".
 - 유지: `runtime.port`, `runtime.health_path`.
 
 ```yaml
@@ -203,12 +203,12 @@ export async function axhubFetch(path: string, init: RequestInit = {}): Promise<
 ## 5. 작업 순서 / PR 분리 (Q 결정 후 확정)
 
 ```
-[apphub.yaml 정리] [Dockerfile 3장] [nginx.conf] ──> [docker build smoke 3종] ──> [1종 e2e bootstrap]
+[axhub.yaml 정리] [Dockerfile 3장] [nginx.conf] ──> [docker build smoke 3종] ──> [1종 e2e bootstrap]
 [lib/axhub 치환 (Q1/Q2/Q3 결정 후)] ───────────────────────────────────────────┘
                                                                                 ──> [ADR 재작성(마지막)]
 ```
 
-- PR 1: Dockerfile 3장 + nginx.conf + apphub.yaml 정리 → `docker build` 3종 통과 (critical path).
+- PR 1: Dockerfile 3장 + nginx.conf + axhub.yaml 정리 → `docker build` 3종 통과 (critical path).
 - PR 2: lib/axhub placeholder 치환 + silent SSO (Q1/Q2/Q3 의존).
 - PR 3: ADR-0001 재작성.
 
