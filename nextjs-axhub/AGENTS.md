@@ -24,7 +24,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 
 ## SDK 사용 프로토콜 (axhub 백엔드 호출 규칙)
 
-> 이 템플릿의 axhub 백엔드 호출은 **항상** `@ax-hub/sdk` 경유. raw `fetch()` 로 `axhub-api.*` 를 직접 때리면 안 돼요.
+> 이 템플릿의 axhub 백엔드 호출은 **항상** `@ax-hub/sdk` 경유. raw `fetch()` 로 `api.axhub.ai` 를 직접 때리면 안 돼요.
 > 사용자 자격은 `lib/axhub-server.ts` 의 `makeAxhub()` factory 가 자동 처리해요.
 
 ### S1. 진입점은 factory 만 — 모듈 레벨 클라이언트 금지
@@ -184,7 +184,7 @@ const prev  = await app.data.table(Orders).list({ before: next.firstCursor!, ord
 ## 절대 규칙 (negative-phrased)
 
 - DO NOT `lib/axhub-server.ts`(server 전용, `next/headers`)를 `"use client"` 컴포넌트에서 import.
-- DO NOT raw `fetch()` 로 `axhub-api.*` 또는 `APPHUB_API_URL` 을 직접 호출 — 항상 `makeAxhub()` / `makeApp()` 경유.
+- DO NOT raw `fetch()` 로 `api.axhub.ai` 또는 `APPHUB_API_URL` 을 직접 호출 — 항상 `makeAxhub()` / `makeApp()` 경유.
 - DO NOT 모듈 레벨에 `AxHubClient` 인스턴스를 캐싱 (사용자 자격 누설).
 - DO NOT slug/tenant 를 코드에 하드코딩 — `lib/axhub-server.ts` 의 `TENANT` / `APP_SLUG` 상수 또는 helper 사용.
 - DO NOT `AxHubError.message` 한국어 문자열로 분기 — `code` / `category` / `instanceof` 만.
