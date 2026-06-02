@@ -14,7 +14,7 @@
 | [**vite-react-axhub**](./vite-react-axhub) | 정적 SPA (랜딩, 계산기, 도구) | Vite 7 + React 19 + Tailwind 3 | 브라우저 (정적) |
 | [**astro-axhub**](./astro-axhub) | 콘텐츠 사이트 (블로그, 문서, 랜딩) | Astro 5 SSR + Node | 서버 (SSR) |
 
-> 3종 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `apphub.yaml` 로 포트·헬스체크만 조정해요.
+> 3종 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요. `apphub.yaml` 은 구버전 CLI 호환용으로만 남겨요.
 
 처음이면 **`nextjs-axhub`** 부터 시작하세요. 가장 보편적이고 LLM 도 가장 잘 짜요.
 
@@ -53,7 +53,8 @@ npm run dev
 각 템플릿엔 다음이 미리 들어 있어요:
 
 - **`Dockerfile`** — axhub 가 이걸로 빌드해요
-- **`apphub.yaml`** — 포트·헬스체크 등 배포 설정
+- **`axhub.yaml`** — 포트·헬스체크, Dockerfile, 배포 방식 설정
+- **`apphub.yaml`** — 구버전 CLI 호환용 legacy 설정
 - **`.env.example`** — 로컬 테스트용 환경변수 템플릿
 - **`lib/axhub.*`** — Hub API 호출 헬퍼 (Server / 브라우저 변형)
 - **`CLAUDE.md`** — Claude Code 가이드 / 행동 규칙
@@ -102,7 +103,7 @@ axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placehold
 
 1. repo 루트에 **`Dockerfile`** 이 있어 `docker build` 로 떠야 해요 (axhub 는 framework 자동생성 안 함 — Dockerfile 필수).
 2. 다음 파일이 모두 있어야 해요:
-   - `Dockerfile`, `apphub.yaml`, `.env.example`, `lib/axhub.*` (또는 동등 위치)
+   - `Dockerfile`, `axhub.yaml`, `.env.example`, `lib/axhub.*` (또는 동등 위치)
    - `CLAUDE.md`, `AGENTS.md`
    - `prompts/getting-started.md`
    - 한국어 `README.md`
@@ -115,7 +116,7 @@ axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placehold
 입문 vibe coder 가 헷갈리지 않게 가장 보편적인 3종(풀스택 Next / 정적 Vite SPA / 콘텐츠 Astro)만 유지해요. 초기엔 express/hono/remix 도 있었지만 정리했어요.
 
 **Q. 다른 framework 도 axhub 에 올릴 수 있나요?**
-네. repo 루트에 `Dockerfile` 만 있으면 돼요. axhub 가 그걸로 빌드해요. (`apphub.yaml` 로 포트/헬스체크 조정)
+네. repo 루트에 `Dockerfile` 만 있으면 돼요. axhub 가 그걸로 빌드해요. (`axhub.yaml` 로 포트/헬스체크와 Dockerfile 우선순위 조정)
 
 **Q. Tailwind 4 가 있는데 왜 3?**
 입문 vibe coder 에게 v3 자료가 더 많고, AI 가 v3 클래스를 더 정확히 짜요. (자세히는 [ADR-0001](./docs/adr/0001-version-floors.md))

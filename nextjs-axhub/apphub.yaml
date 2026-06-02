@@ -1,6 +1,7 @@
+# legacy apphub.yaml — 구버전 CLI 호환용이에요. 새 배포 계약은 axhub.yaml 을 먼저 봐요.
 # axhub 배포 설정
 # 이 앱은 Dockerfile 로 빌드돼요 (next build, output:"standalone" → node server.js).
-# apphub.yaml 은 컨테이너 포트·헬스체크 override 일 뿐이에요. (Dockerfile 의 EXPOSE 와 맞추세요.)
+# 새 axhub.yaml 과 같은 runtime override 를 유지해요. (Dockerfile 의 EXPOSE 와 맞추세요.)
 runtime:
   port: 3000
   health_path: /
