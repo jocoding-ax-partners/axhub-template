@@ -19,17 +19,48 @@ if (axhub.isConfigured) {
   }
 }
 const tenant = me?.tenants?.[0];
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 🤖 Claude Code / AI 에이전트 — 백엔드 호출 치트시트 (지우지 말 것)
+ *
+ * 화면을 깔끔히 하려고 아래 패턴들을 주석으로 내렸을 뿐, 이 앱에서 axhub 백엔드를
+ * 쓸 때 그대로 쓰는 정식 패턴이다. 전부 서버(frontmatter)에서 호출한다.
+ * Astro 는 전역 쿠키 접근이 없어서 Astro.request 의 쿠키를 ctx 로 넘긴다. 헬퍼가
+ * _hub_access 를 Bearer 로 포워딩해 사용자 자격으로 호출한다. 정적 API 키 안 쓴다.
+ *
+ * 1) 내 정보 · Hub API  (위 환영 메시지가 이 호출 결과)
+ *    const res = await axhub.fetch("/api/v1/me", {}, {
+ *      cookie: Astro.request.headers.get("cookie"),
+ *    });
+ *    const me = await res.json(); // { user, tenants }
+ *
+ * 2) 앱 데이터 · 동적 테이블 CRUD
+ *    const ctx = { cookie: Astro.request.headers.get("cookie") };
+ *    // GET  {API_BASE}/data/{tenant}/{app}/todos
+ *    const list = await (await axhub.data("todos", {}, ctx)).json();
+ *    await axhub.data("todos", { method: "POST", body: JSON.stringify({ title: "할 일" }) }, ctx);
+ *
+ * 원본 /me 응답을 그대로 보고 싶으면 /ssr 페이지 참고.
+ * ───────────────────────────────────────────────────────────────────────────── */
 ---
 
 <Layout title="axhub × Astro">
+  <div class="glow" aria-hidden="true"></div>
   <main>
-    <h1>axhub × Astro</h1>
+    {/* 히어로 */}
+    <header class="hero">
+      <div class="tile"><span class="sheen"></span><span>ax</span></div>
+      <span class="badge">vibe-coding starter</span>
+      <h1>axhub <span class="accent">×</span> Astro</h1>
+      <p class="lede">백엔드 · 인증 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.</p>
+    </header>
 
-    {/* 환영 — GET /api/v1/me 결과 */}
+    {/* 환영 카드 — GET /api/v1/me 결과 */}
     <section class="card welcome">
       {
         me ? (
           <Fragment>
+            <span class="dot dot-ok" />
             <p class="hello">환영합니다, {me.user.name}님 👋</p>
             <p class="sub">
               {me.user.email}
@@ -37,119 +68,223 @@ const tenant = me?.tenants?.[0];
             </p>
           </Fragment>
         ) : (
-          <p class="warn">
-            {axhub.isConfigured
-              ? "로그인 정보를 불러오지 못했어요. axhub 로그인 상태를 확인해 주세요."
-              : "로컬 실행 중 — axhub 로 배포하면 로그인한 사용자가 여기 표시돼요."}
-          </p>
+          <Fragment>
+            <span class="dot dot-warn" />
+            <p class="warn">
+              {axhub.isConfigured
+                ? "로그인 정보를 불러오지 못했어요. axhub 로그인 상태를 확인해 주세요."
+                : "로컬 실행 중"}
+            </p>
+            {!axhub.isConfigured && (
+              <p class="sub">axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.</p>
+            )}
+          </Fragment>
         )
       }
     </section>
 
-    {/* 백엔드 호출 치트시트 */}
-    <section class="card">
-      <h2>백엔드, 이렇게 호출해요 (서버에서)</h2>
+    {/* 다음 단계 */}
+    <div class="steps">
+      <div class="step"><span class="num">1</span><p class="step-t">화면 만들기</p><code>src/pages/index.astro</code></div>
+      <div class="step"><span class="num">2</span><p class="step-t">백엔드 호출</p><code>axhub.fetch()</code></div>
+      <div class="step"><span class="num">3</span><p class="step-t">배포</p><code>/axhub:deploy</code></div>
+    </div>
 
-      <p class="hint">내 정보 · Hub API — 위 환영 메시지가 이 호출 결과예요</p>
-      <pre><code>{`const res = await axhub.fetch("/api/v1/me", {}, {
-  cookie: Astro.request.headers.get("cookie"),
-});
-const me = await res.json(); // { user, tenants }`}</code></pre>
-
-      <p class="hint">앱 데이터 — 동적 테이블 CRUD</p>
-      <pre><code>{`const ctx = { cookie: Astro.request.headers.get("cookie") };
-// GET  {API_BASE}/data/{tenant}/{app}/todos
-const list = await (await axhub.data("todos", {}, ctx)).json();
-await axhub.data("todos", { method: "POST", body: JSON.stringify({ title: "할 일" }) }, ctx);`}</code></pre>
-
-      <p class="note">
-        Astro 는 전역 쿠키 접근이 없어서 <code>Astro.request</code> 의 쿠키를 ctx 로 넘겨요. 헬퍼가
-        <code>_hub_access</code> 를 <code>Bearer</code> 로 포워딩해 사용자 자격으로 호출해요. 정적 API 키 안 써요.
+    <footer>
+      <p class="tech">Astro · Node · TypeScript</p>
+      <p class="slug">
+        원본 <code>/me</code> 응답: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
+        <code class="slug-code">{axhub.slug || "(로컬 실행)"}</code>
       </p>
-      <p class="slug">이 앱 슬러그: <code>{axhub.slug || "(로컬 실행)"}</code></p>
-    </section>
-
-    <ol>
-      <li><code>src/pages/index.astro</code> 를 열어 화면을 바꿔봐요.</li>
-      <li>원본 <code>/me</code> 응답을 그대로 보고 싶으면 <a href="/ssr">/ssr</a>.</li>
-      <li>다 만들었으면 Claude Code 에서 <code>/axhub:deploy</code>.</li>
-    </ol>
-
-    <footer>Astro · Node · TypeScript</footer>
+    </footer>
   </main>
 </Layout>
 
 <style>
+  .glow {
+    position: fixed;
+    top: -12rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40rem;
+    height: 40rem;
+    border-radius: 9999px;
+    background: var(--primary-soft);
+    opacity: 0.7;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: -1;
+  }
   main {
-    max-width: 720px;
-    margin: 4rem auto;
-    padding: 0 1rem;
-  }
-  h1 {
-    font-size: 2rem;
-    margin: 0 0 1.5rem;
-  }
-  .card {
-    margin: 1.25rem 0;
-    padding: 1.25rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-  }
-  .welcome {
+    max-width: 36rem;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.75rem;
+    padding: 5rem 1.5rem;
     text-align: center;
   }
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .tile {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 14px;
+    margin-bottom: 1.25rem;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.125rem;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    box-shadow: var(--shadow-lg, 0 10px 16px -4px rgba(0, 0, 0, 0.18));
+  }
+  .tile .sheen {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25), transparent 55%);
+  }
+  .tile span:last-child {
+    position: relative;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+  }
+  h1 {
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin: 1rem 0 0;
+  }
+  .accent {
+    color: var(--primary);
+  }
+  .lede {
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 24rem;
+    margin: 0.65rem 0 0;
+  }
+  .card {
+    width: 100%;
+    background: var(--bg-content);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  }
+  .dot {
+    display: block;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    margin: 0 auto 0.75rem;
+  }
+  .dot-ok {
+    background: var(--success);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 25%, transparent);
+  }
+  .dot-warn {
+    background: var(--warning);
+  }
   .hello {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .warn {
+    font-size: 0.95rem;
     font-weight: 600;
     margin: 0;
   }
   .sub {
-    color: var(--color-muted);
-    font-size: 0.9rem;
-    margin: 0.35rem 0 0;
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+    margin: 0.4rem 0 0;
   }
-  .warn {
-    color: var(--color-warn);
-    font-weight: 600;
-    margin: 0;
+  .steps {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
   }
-  h2 {
-    font-size: 0.95rem;
-    margin: 0 0 0.75rem;
+  @media (max-width: 30rem) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
   }
-  .hint {
-    color: var(--color-muted);
-    font-size: 0.8rem;
-    margin: 0.75rem 0 0.25rem;
+  .step {
+    background: var(--bg-content);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: left;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .note {
-    color: var(--color-muted);
-    font-size: 0.8rem;
-    line-height: 1.6;
-    margin: 0.75rem 0 0;
+  .step:hover {
+    border-color: var(--primary);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
   }
-  .slug {
-    color: var(--color-muted);
+  .num {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: var(--primary-soft);
+    color: var(--primary);
     font-size: 0.75rem;
-    margin: 0.5rem 0 0;
+    font-weight: 700;
   }
-  pre {
-    background: #f3f4f6;
-    padding: 0.85rem;
-    border-radius: 0.5rem;
-    overflow-x: auto;
-    font-size: 0.82rem;
-    margin: 0;
+  .step-t {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0.6rem 0 0.25rem;
   }
-  code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-  ol {
-    line-height: 1.8;
+  .step code {
+    font-size: 0.6875rem;
+    color: var(--fg-subtle);
   }
   footer {
-    margin-top: 2.5rem;
-    color: var(--color-muted);
-    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .tech {
+    color: var(--fg-subtle);
+    font-size: 0.75rem;
+    margin: 0;
+  }
+  .slug {
+    color: var(--fg-subtle);
+    font-size: 0.6875rem;
+    margin: 0;
+  }
+  .slug a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+  .slug-code {
+    background: var(--primary-soft);
+    color: var(--primary);
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
   }
 </style>

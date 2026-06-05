@@ -14,6 +14,12 @@ const { title, description = "조코딩 AX 파트너스 axhub 바이브코딩 �
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <title>{title}</title>
+    <!-- Pretendard — axhub 디자인 시스템 기본 폰트 (CDN) -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+    />
   </head>
   <body>
     <slot />
@@ -21,20 +27,54 @@ const { title, description = "조코딩 AX 파트너스 axhub 바이브코딩 �
 </html>
 
 <style is:global>
+  /* ──────────────────────────────────────────────────────────────────────
+   * axhub 디자인 시스템 토큰 (v2.1 발췌) — 콘솔/프론트와 무드 정렬.
+   * primary=블루, surface=gray-50 위 흰 카드, Pretendard. 다크는 prefers-color-scheme.
+   * ────────────────────────────────────────────────────────────────────── */
   :root {
-    --color-text: #111827;
-    --color-bg: #ffffff;
-    --color-muted: #6b7280;
-    --color-border: #e5e7eb;
-    --color-accent: #4f39fa;
-    --color-ok: #059669;
-    --color-warn: #d97706;
+    --primary: #2d64fa;
+    --primary-hover: #5985fb;
+    --primary-soft: #eaf0fe;
+
+    --bg-surface: #f6f7f9;
+    --bg-content: #ffffff;
+
+    --fg-default: #16171b;
+    --fg-muted: #6d717e;
+    --fg-subtle: #9ca0ab;
+
+    --border-default: #e4e5e8;
+
+    --success: #27c961;
+    --warning: #f6c205;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --primary: #4b7bff;
+      --primary-hover: #5985fb;
+      --primary-soft: rgba(75, 123, 255, 0.22);
+
+      --bg-surface: #1d1e23;
+      --bg-content: #25272d;
+
+      --fg-default: #ffffff;
+      --fg-muted: #d1d3d8;
+      --fg-subtle: #9ca0ab;
+
+      --border-default: rgba(255, 255, 255, 0.1);
+
+      --success: #3ddb78;
+      --warning: #ffe246;
+    }
   }
 
   html {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    color: var(--color-text);
-    background-color: var(--color-bg);
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+      "Segoe UI", Roboto, sans-serif;
+    color: var(--fg-default);
+    background-color: var(--bg-surface);
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
@@ -44,8 +84,5 @@ const { title, description = "조코딩 AX 파트너스 axhub 바이브코딩 �
 
   code {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    background: #f3f4f6;
-    padding: 0.1rem 0.3rem;
-    border-radius: 0.25rem;
   }
 </style>
