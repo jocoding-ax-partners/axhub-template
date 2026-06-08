@@ -15,7 +15,7 @@ app/page.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명]
 ## 2. axhub Hub API 호출하는 페이지
 
 ```
-/me 라우트 만들어줘. @ax-hub/sdk 의 sdk.identity.me 를 Server Component 에서 호출해서
+/me 라우트 만들어줘. @ax-hub/sdk 2.x 의 sdk.identity.me 를 Server Component 에서 호출해서
 로그인 사용자 정보 + 소속 tenant 목록을 카드로 보여줘.
 lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기.
 ```
@@ -43,7 +43,7 @@ AxHubError 는 .code 로 분기 (PoolStaleError / PermissionDeniedError).
 
 ```
 app/orders 라우트에 결제 완료 + 금액 100 이상 주문만 보여주는 페이지.
-@ax-hub/sdk 의 defineSchema 로 Orders 스키마 잡고, where / and / or 로 filter 만들어
+@ax-hub/sdk 2.x 의 defineSchema 로 Orders 스키마 잡고, where / and / or 로 filter 만들어
 makeApp().data.table(Orders).list({ where, select: ['id','total'] as const, orderBy, limit: 50 }).
 페이지네이션은 nextCursor / firstCursor 로 prev/next 버튼.
 ```

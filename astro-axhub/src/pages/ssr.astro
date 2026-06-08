@@ -1,16 +1,16 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { axhub } from "../lib/axhub";
+import { isAxhubConfigured, makeAxhub } from "../lib/axhub-server";
 
 let upstream: { status: number; body: unknown } | null = null;
 let error: string | null = null;
 
-if (axhub.isConfigured) {
+if (isAxhubConfigured()) {
   try {
-    // 들어온 요청의 _hub_access 쿠키를 포워딩해 사용자 자격으로 호출.
-    const res = await axhub.fetch("/api/v1/me", {}, { cookie: Astro.request.headers.get("cookie") });
-    const body = await res.json().catch(() => null);
-    upstream = { status: res.status, body };
+    // 들어온 요청의 _hub_access 쿠키를 SDK JWT 로 포워딩해 사용자 자격으로 호출.
+    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
+    const body = await sdk.identity.me();
+    upstream = { status: 200, body };
   } catch (err) {
     error = String(err);
   }
@@ -27,7 +27,7 @@ const ts = new Date().toISOString();
       <code>{ts}</code>
     </p>
 
-    {!axhub.isConfigured && (
+    {!isAxhubConfigured() && (
       <div class="warn-card">
         axhub 환경변수가 설정되지 않았어요. <code>.env</code> 또는 axhub 배포 환경을 확인해 주세요.
       </div>
@@ -41,7 +41,7 @@ const ts = new Date().toISOString();
 
     {upstream && (
       <section class="result">
-        <h2>axhub.fetch("/api/v1/me") 응답</h2>
+        <h2>sdk.identity.me() 응답</h2>
         <p>HTTP <strong>{upstream.status}</strong></p>
         <pre>{JSON.stringify(upstream.body, null, 2)}</pre>
       </section>

@@ -7,12 +7,12 @@
 비전공자 한국인 vibe coder. 한국어로 답해요. 콘텐츠 사이트 + SSR. 결과는 브라우저로 확인.
 
 ## Stack
-Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+. **SSR.**
+Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk 2.x (서버 호출 전용)**. **SSR.**
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
 1. **Plan first** — 다단계 작업 시작 전, 한국어로 한 줄 plan 보여줘요.
-   예: "1. `src/pages/blog.astro` 만들기 → 2. frontmatter 에서 axhub.fetch → 3. 카드 그리드". 사용자 OK 후 코드.
+   예: "1. `src/pages/blog.astro` 만들기 → 2. frontmatter 에서 makeAxhub/table 호출 → 3. 카드 그리드". 사용자 OK 후 코드.
 2. **Verify-then-claim** — 페이지 변경 후 "되긴 해요" / "should work" / "테스트 해보세요" 만으로 끝 금지.
    정확히 어디 접속해서 무엇이 보여야 하는지 알려줘요.
    예: "http://localhost:4321/blog 접속 → 글 카드 N개 보여야 해요. 빈 페이지면 frontmatter 에러 알려주세요."
@@ -43,14 +43,18 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+. **SSR.**
 - GET 은 **본인 행만** 자동 반환돼요. owner_id 필터를 직접 걸지 마세요.
 - 모두가 공유하는 공용 테이블은 owner_column 없이 만들되, 그땐 조회에 **필터가 반드시** 있어야 해요 (owner 도 필터도 없으면 400).
 
-### R3. 데이터 호출은 로그인 세션 + 쿠키 ctx 안에서만
+### R3. 데이터 호출은 SDK 2.x + 로그인 세션 쿠키 ctx 안에서만
 - read/write 는 **로그인한 사용자의 세션 쿠키**로 인증돼요. 비로그인 호출은 401.
 - Astro 는 전역 `cookies()` 가 없어서, **호출마다 ctx 로 쿠키를 넘겨야** 인증돼요:
   ```ts
+  import { table } from '../lib/axhub-server'
+
   const ctx = { cookie: Astro.request.headers.get('cookie') }
-  const list = await (await axhub.data('guestbook', {}, ctx)).json()                  // 내 행만
-  await axhub.data('guestbook', { method: 'POST', body: JSON.stringify({ message: '안녕' }) }, ctx)
+  const guestbook = await table<{ id: string; message: string; created_at: string }>('guestbook', ctx)
+  const page = await guestbook.list({ limit: 20 })         // 내 행만 자동 반환
+  await guestbook.insert({ message: '안녕' })              // owner_id 는 backend 가 자동
   ```
+- 사용자/테넌트 정보나 일반 Hub API 는 `makeAxhub(ctx)` / `makeApp(ctx)` 로 호출해요.
 - frontmatter · `src/pages/api/*.ts` 안에서만 (Framework-Specific 참조). `<script>` 태그(브라우저)에서 호출 금지.
 
 ### R4. 코드가 secret(API 키 등)을 쓰면 → axhub env 에 등록 (배포 필수)
@@ -65,12 +69,12 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+. **SSR.**
    ```bash
    printf %s "$OPENAI_API_KEY" | axhub env set OPENAI_API_KEY --app <APP_SLUG> --secret --from-stdin --stage runtime --json
    ```
-- `APPHUB_API_URL` / `APPHUB_APP_SLUG` / `APPHUB_TENANT` 는 axhub 가 **자동 주입**해요 — 직접 등록 불필요. 소스에 `{{...}}` 가 그대로 보이거나 `axhub.isConfigured()` 가 false 면 아직 미배포/미설정 상태이니, 코드를 깨지 말고 그 사실을 사용자에게 알려요.
+- `APPHUB_API_URL` / `APPHUB_APP_SLUG` / `APPHUB_TENANT` 는 axhub 가 **자동 주입**해요 — 직접 등록 불필요. 소스에 `{{...}}` 가 그대로 보이거나 `isAxhubConfigured()` 가 false 면 아직 미배포/미설정 상태이니, 코드를 깨지 말고 그 사실을 사용자에게 알려요.
 
 ## Framework-Specific Rules (Astro 5 SSR)
 
 - `astro.config.ts` 의 `output: "server"` + `adapter: node({ mode: "standalone" })` **절대 바꾸지 마요**. 이게 axhub 배포 핵심.
-- `src/lib/axhub.ts` 는 **frontmatter / API endpoint (`src/pages/api/*.ts`) / `getStaticPaths` 안에서만** 호출. `<script>` 태그 안 호출 금지.
+- `src/lib/axhub-server.ts` 는 **frontmatter / API endpoint (`src/pages/api/*.ts`) / `getStaticPaths` 안에서만** import. `<script>` 태그 안 호출 금지. `src/lib/axhub.ts` 는 호환 re-export 뿐이므로 새 코드는 `axhub-server` 를 직접 import.
 - `.astro` 한 파일에 frontmatter + 템플릿 + scoped style 같이 두는 게 컨벤션. 분리 금지.
 - React/Vue 가 정말 필요한 경우만 island 추가 (`npm i @astrojs/react`). 기본은 `.astro`.
 - 변경 보고: `file:line` 형식.
@@ -78,15 +82,15 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+. **SSR.**
 ## 절대 규칙 (negative-phrased)
 
 - DO NOT `output: "server"` 또는 `adapter: node({ mode: "standalone" })` 변경.
-- DO NOT `axhub.ts` 를 `<script>` 태그 안에서 import.
+- DO NOT `axhub-server.ts` 또는 `axhub.ts` 를 `<script>` 태그 안에서 import.
 - DO NOT `.env` 커밋.
 - DO NOT 사용자 동의 없이 destructive git.
 - DO NOT 새 npm 패키지 사용자 확인 없이 설치.
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행). axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (3종 동일 외부 API).
-인증: 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 백엔드에 `Authorization: Bearer` 로 포워딩. 정적 API key 안 씀. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
+이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행). Hub 호출은 `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 2.x` factory(`makeAxhub` / `makeApp` / `table`)만 믿어요.
+인증: 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 씀. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포
 

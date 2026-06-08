@@ -21,5 +21,7 @@ import { makeApp } from './axhub-server'
 //   // page.items: Row[]
 export async function table<Row extends Record<string, unknown>>(name: string) {
   const app = await makeApp()
-  return app.data.table<Row>(name)
+  // SDK 2.x 권장: 런타임 스키마를 먼저 introspect 하고 같은 DataTableClient 표면을 돌려줘요.
+  // 명시 schema 가 필요한 기능 코드는 makeApp().data.table(defineSchema(...)) 를 직접 쓰세요.
+  return app.data.discover<Row>(name)
 }

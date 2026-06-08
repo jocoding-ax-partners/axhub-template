@@ -1,19 +1,21 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { axhub } from "../lib/axhub";
+import { APP_SLUG, isAxhubConfigured, makeAxhub } from "../lib/axhub-server";
 
-// GET /api/v1/me 응답 (axhub 백엔드). 로그인한 사용자 + 활성 테넌트 멤버십.
+// SDK 2.x identity.me 응답. 로그인한 사용자 + 활성 테넌트 멤버십.
 type Me = {
-  user: { id: string; email: string; name: string; platform_admin: boolean };
-  tenants: { tenant_id: string; tenant_slug: string; role: string; is_active: boolean }[];
+  userId: string;
+  email: string;
+  name?: string;
+  tenants?: { tenantId: string; tenantSlug: string; role: string; isActive: boolean }[];
 };
 
 let me: Me | null = null;
-if (axhub.isConfigured) {
+if (isAxhubConfigured()) {
   try {
-    // frontmatter(서버)에서 들어온 요청의 쿠키를 ctx 로 넘겨 Bearer 포워딩 — 사용자 자격으로 호출.
-    const res = await axhub.fetch("/api/v1/me", {}, { cookie: Astro.request.headers.get("cookie") });
-    if (res.ok) me = (await res.json()) as Me;
+    // frontmatter(서버)에서 들어온 요청의 쿠키를 ctx 로 넘기면 SDK 가 JWT Bearer 로 포워딩해요.
+    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
+    me = (await sdk.identity.me()) as Me;
   } catch {
     /* noop — 아래에서 안내 */
   }
@@ -25,22 +27,23 @@ const tenant = me?.tenants?.[0];
  *
  * 화면을 깔끔히 하려고 아래 패턴들을 주석으로 내렸을 뿐, 이 앱에서 axhub 백엔드를
  * 쓸 때 그대로 쓰는 정식 패턴이다. 전부 서버(frontmatter)에서 호출한다.
- * Astro 는 전역 쿠키 접근이 없어서 Astro.request 의 쿠키를 ctx 로 넘긴다. 헬퍼가
+ * Astro 는 전역 쿠키 접근이 없어서 Astro.request 의 쿠키를 ctx 로 넘긴다. SDK factory 가
  * _hub_access 를 Bearer 로 포워딩해 사용자 자격으로 호출한다. 정적 API 키 안 쓴다.
  *
- * 1) 내 정보 · Hub API  (위 환영 메시지가 이 호출 결과)
- *    const res = await axhub.fetch("/api/v1/me", {}, {
+ * 1) 내 정보 · sdk.identity.me  (위 환영 메시지가 이 호출 결과)
+ *    import { makeAxhub } from "../lib/axhub-server";
+ *    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
+ *    const me = await sdk.identity.me(); // { email, name, tenants[] }
+ *
+ * 2) 앱 데이터 · sdk.data.discover  (스키마 자동 추론)
+ *    import { table } from "../lib/axhub-server";
+ *    const todos = await table<{ id: string; title: string }>("todos", {
  *      cookie: Astro.request.headers.get("cookie"),
  *    });
- *    const me = await res.json(); // { user, tenants }
+ *    const list = await todos.list({ limit: 20 });
+ *    await todos.insert({ title: "할 일" });
  *
- * 2) 앱 데이터 · 동적 테이블 CRUD
- *    const ctx = { cookie: Astro.request.headers.get("cookie") };
- *    // GET  {API_BASE}/data/{tenant}/{app}/todos
- *    const list = await (await axhub.data("todos", {}, ctx)).json();
- *    await axhub.data("todos", { method: "POST", body: JSON.stringify({ title: "할 일" }) }, ctx);
- *
- * 원본 /me 응답을 그대로 보고 싶으면 /ssr 페이지 참고.
+ * 원본 identity.me 응답을 그대로 보고 싶으면 /ssr 페이지 참고.
  * ───────────────────────────────────────────────────────────────────────────── */
 ---
 
@@ -55,27 +58,27 @@ const tenant = me?.tenants?.[0];
       <p class="lede">백엔드 · 인증 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.</p>
     </header>
 
-    {/* 환영 카드 — GET /api/v1/me 결과 */}
+    {/* 환영 카드 — sdk.identity.me 결과 */}
     <section class="card welcome">
       {
         me ? (
           <Fragment>
             <span class="dot dot-ok" />
-            <p class="hello">환영합니다, {me.user.name}님 👋</p>
+            <p class="hello">환영합니다, {me.name ?? me.email}님 👋</p>
             <p class="sub">
-              {me.user.email}
-              {tenant ? ` · ${tenant.tenant_slug} (${tenant.role})` : ""}
+              {me.email}
+              {tenant ? ` · ${tenant.tenantSlug} (${tenant.role})` : ""}
             </p>
           </Fragment>
         ) : (
           <Fragment>
             <span class="dot dot-warn" />
             <p class="warn">
-              {axhub.isConfigured
+              {isAxhubConfigured()
                 ? "로그인 정보를 불러오지 못했어요. axhub 로그인 상태를 확인해 주세요."
                 : "로컬 실행 중"}
             </p>
-            {!axhub.isConfigured && (
+            {!isAxhubConfigured() && (
               <p class="sub">axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.</p>
             )}
           </Fragment>
@@ -86,7 +89,7 @@ const tenant = me?.tenants?.[0];
     {/* 다음 단계 */}
     <div class="steps">
       <div class="step"><span class="num">1</span><p class="step-t">화면 만들기</p><code>src/pages/index.astro</code></div>
-      <div class="step"><span class="num">2</span><p class="step-t">백엔드 호출</p><code>axhub.fetch()</code></div>
+      <div class="step"><span class="num">2</span><p class="step-t">백엔드 호출</p><code>makeAxhub()</code></div>
       <div class="step"><span class="num">3</span><p class="step-t">배포</p><code>/axhub:deploy</code></div>
     </div>
 
@@ -94,7 +97,7 @@ const tenant = me?.tenants?.[0];
       <p class="tech">Astro · Node · TypeScript</p>
       <p class="slug">
         원본 <code>/me</code> 응답: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
-        <code class="slug-code">{axhub.slug || "(로컬 실행)"}</code>
+        <code class="slug-code">{isAxhubConfigured() ? APP_SLUG : "(로컬 실행)"}</code>
       </p>
     </footer>
   </main>

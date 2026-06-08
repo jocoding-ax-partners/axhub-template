@@ -44,6 +44,7 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 - 모두가 공유하는 공용 테이블은 owner_column 없이 만들되, 그땐 조회에 **필터가 반드시** 있어야 해요 (owner 도 필터도 없으면 400).
 
 ### R3. 데이터 호출엔 로그인 세션이 필요해요 (브라우저에서 직접)
+- 이 템플릿은 **브라우저 전용 세션 fetch 헬퍼**만 사용해요. 서버용 Node SDK 를 클라이언트 번들에 넣지 마세요.
 - `axhub.data(...)` 가 `credentials:"include"` 로 로그인 세션 쿠키(`_hub_access`)를 자동 전송해요. 비로그인/만료면 401 → 헬퍼가 silent SSO 로 자동 재인증(`APP_ORIGIN` 필요). 별도 backend 불필요.
 - 데이터는 컴포넌트에서 `axhub.data()` 로 바로 호출하면 돼요:
   ```ts
@@ -74,7 +75,7 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼 = `axhub.fetch/data/slug/isConfigured` (3종 동일 외부 API).
+이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼 = **브라우저 전용 세션 fetch 헬퍼** `axhub.fetch/data/slug/isConfigured`.
 인증: `credentials: "include"` 로 axhub 세션 쿠키(`_hub_access`) 자동 전송 + 401 시 silent SSO 재인증. **시크릿 키 미주입.** 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포

@@ -26,26 +26,36 @@ npm run dev
 
 ```
 src/pages/blog.astro 만들어줘.
-- frontmatter: axhub.fetch("/api/v1/posts", {}, { cookie: Astro.request.headers.get("cookie") }) 결과를 posts 변수로
+- frontmatter: `makeAxhub({ cookie })` 또는 `table("posts", { cookie })` 로 SDK 2.x 호출 결과를 posts 변수로
 - 템플릿: posts.map 으로 카드 그리드
 - style: scoped CSS, 모바일 친화
 ```
 
-## 3. axhub Hub API 쓰기
+## 3. axhub Hub API 쓰기 (`@ax-hub/sdk 2.x`)
 
-`src/lib/axhub.ts` — Astro frontmatter / API endpoint 에서 import. 들어온 요청의 axhub 세션 쿠키를
-포워딩해 *그 사용자 자격*으로 호출하므로, 3번째 인자로 `Astro.request` 쿠키를 넘겨줘요.
+`src/lib/axhub-server.ts` — Astro frontmatter / API endpoint 에서 import. 들어온 요청의 axhub 세션 쿠키를 SDK factory 에 넘겨 *그 사용자 자격*으로 호출해요.
 
 ```astro
 ---
-import { axhub } from "../lib/axhub";
-const res = await axhub.fetch("/api/v1/me", {}, { cookie: Astro.request.headers.get("cookie") });
-const me = await res.json();
+import { makeAxhub } from "../lib/axhub-server";
+const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
+const me = await sdk.identity.me();
 ---
-<p>안녕하세요, {me.name} 님</p>
+<p>안녕하세요, {me.name ?? me.email} 님</p>
 ```
 
-> ⚠️ axhub 헬퍼는 **Server-side 전용**이에요. `<script>` 태그(브라우저) 안에서 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서. (브라우저엔 사용자 쿠키 컨텍스트가 없어요.)
+동적 테이블은 런타임 스키마 introspection 이 들어간 `table<Row>()` 헬퍼를 쓰세요.
+
+```ts
+import { table } from "../lib/axhub-server";
+const todos = await table<{ id: string; title: string }>("todos", {
+  cookie: Astro.request.headers.get("cookie"),
+});
+const page = await todos.list({ limit: 20 });
+await todos.insert({ title: "할 일" }); // owner_id 는 backend 가 자동
+```
+
+> ⚠️ SDK helper 는 **Server-side 전용**이에요. `<script>` 태그(브라우저) 안에서 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `src/lib/axhub-server.ts` 를 직접 import 하세요.
 
 ## 4. axhub 에 배포
 
@@ -93,12 +103,11 @@ npx astro add react   # config 자동 수정
 
 그 후 `.astro` 안에서 `<MyReact client:load />` 로 끼워 써요.
 
-## axhub.ts 신뢰 모델 (이 템플릿)
+## axhub-server.ts 신뢰 모델 (이 템플릿)
 
 이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
-axhub 헬퍼는 3종 모두 동일한 외부 API (`axhub.fetch / data / slug / isConfigured`) 를 노출해요.
-인증은 axhub 로그인 세션 쿠키(`_hub_access`)로: 호출 시 넘긴 `Astro.request` 쿠키를 백엔드에
-`Authorization: Bearer` 로 포워딩해요. 정적 API key 안 써요.
+Hub 호출은 `@ax-hub/sdk 2.x` 의 `AxHubClient` 한 종류만 — helper 는 `makeAxhub` / `makeApp` / `makeTenant` / `table` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요.
+인증은 axhub 로그인 세션 쿠키(`_hub_access`)로: 호출 시 넘긴 `Astro.request` 쿠키를 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 써요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 8. 라이선스

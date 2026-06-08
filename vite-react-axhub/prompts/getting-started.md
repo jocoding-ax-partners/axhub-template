@@ -16,13 +16,13 @@ src/App.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명] 
 
 ```
 src/components/UserList.tsx 만들어줘. axhub Data plane 의 /users 리소스에서 사용자 목록을
-가져와서 카드 그리드로 보여줘. lib/axhub.ts 의 axhub.data 사용. 로딩/에러 상태도 표시.
+가져와서 카드 그리드로 보여줘. lib/axhub.ts 의 브라우저 세션 헬퍼 `axhub.data` 사용. 로딩/에러 상태도 표시.
 ```
 
 ## 3. 폼 + 저장
 
 ```
-src/components/FeedbackForm.tsx 만들어줘. 입력 → 제출 시 axhub Data plane 의 /feedback 으로
+src/components/FeedbackForm.tsx 만들어줘. 입력 → 제출 시 `axhub.data("feedback", { method: "POST", body })` 로
 POST. 성공하면 "감사합니다" 토스트. 실패하면 에러 메시지.
 ```
 

@@ -7,7 +7,7 @@
 비전공자 한국인 vibe coder. 한국어로 답해요. 코드 용어는 풀어서 설명해요. 결과는 화면으로 확인.
 
 ## Stack
-Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ · **`@ax-hub/sdk`** (백엔드 호출은 항상 SDK 경유).
+Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ · **`@ax-hub/sdk 2.x`** (백엔드 호출은 항상 SDK 경유).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -20,7 +20,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 3. **No unprompted refactor** — X 요청에 Y / Z 같이 "개선" 금지. 변경한 모든 line 이 X 와 직접 관련.
    추가로 할 일은 한국어로 적어두고 사용자가 결정.
 4. **Honest failure** — 못 만들면 plainly 말해요. "아직 안 풀렸어요. 시도: A, B. 모름: C." 가짜 진행/성공 보고 금지.
-5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요. (단, `@ax-hub/sdk` 는 이미 설치돼 있으니 다시 설치 금지.)
+5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요. (단, `@ax-hub/sdk 2.x` 는 이미 설치돼 있으니 다시 설치 금지.)
 
 ## axhub 리소스 준비 — 데이터/시크릿 코드를 짜기 *전에* (에이전트 필수)
 
@@ -66,7 +66,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 
 ## SDK 사용 프로토콜 (axhub 백엔드 호출 규칙)
 
-> 이 템플릿의 axhub 백엔드 호출은 **항상** `@ax-hub/sdk` 경유. raw `fetch()` 로 `api.axhub.ai` 를 직접 때리면 안 돼요.
+> 이 템플릿의 axhub 백엔드 호출은 **항상** `@ax-hub/sdk 2.x` 경유. raw `fetch()` 로 `api.axhub.ai` 를 직접 때리면 안 돼요.
 > 사용자 자격은 `lib/axhub-server.ts` 의 `makeAxhub()` factory 가 자동 처리해요.
 
 ### S1. 진입점은 factory 만 — 모듈 레벨 클라이언트 금지
@@ -81,7 +81,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 - ❌ flat 호출 (`sdk.apps.create(...)` 같이 tenant 스코프 없이) 금지 — `TenantSlugRequiredError` 떨어져요. (단, `sdk.identity.*` 는 tenant 불필요 — 예외.)
 
 ### S3. 데이터 호출은 discover 또는 defineSchema — raw URL 금지
-- ✅ 진입점은 `lib/data.ts` 의 `table<Row>('todos')` — `makeApp().data.table` 을 한 줄로 감싼 거예요. 테이블은 먼저 만들어야 해요 (위 R1, owner_id 는 R2).
+- ✅ 진입점은 `lib/data.ts` 의 `table<Row>('todos')` — `makeApp().data.discover` 를 한 줄로 감싼 거예요. 테이블은 먼저 만들어야 해요 (위 R1, owner_id 는 R2).
 - ✅ 빠른 prototyping: `await app.data.discover<{ id: string; title: string }>('todos')`.
 - ✅ 안정 코드: `defineSchema({ table: 'todos', columns: { id: 'uuid', title: 'string' } })` 후 `app.data.table(Todos)`.
 - ❌ `sdk.http.request(...)` / `fetch('/data/...')` 직접 호출 — SDK 가 cursor / where / projection 다 알아서 해요.
@@ -237,7 +237,7 @@ const prev  = await app.data.table(Orders).list({ before: next.firstCursor!, ord
 - DO NOT 사용자 세션 쿠키(`_hub_access`)/토큰을 응답 본문·로그에 노출.
 - DO NOT `.env.local` 커밋 (`.gitignore` 막혀있지만 force-add 도 금지).
 - DO NOT 사용자 동의 없이 destructive git (`reset --hard`, `push --force`, `branch -D`).
-- DO NOT 새 npm 패키지 사용자 확인 없이 설치 (`@ax-hub/sdk` 는 이미 들어가 있어 재설치 금지).
+- DO NOT 새 npm 패키지 사용자 확인 없이 설치 (`@ax-hub/sdk 2.x` 는 이미 들어가 있어 재설치 금지).
 - DO NOT 빌드/타입/린트 명령 사용자가 묻기 전에 실행.
 
 ## axhub-server.ts 신뢰 모델 (1-line)
