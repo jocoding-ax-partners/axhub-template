@@ -21,6 +21,52 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+. **SSR.**
 4. **Honest failure** — 못 만들면 plainly 말해요. 가짜 성공 보고 금지.
 5. **Ask before install** — npm install 전에 한 번 물어봐요.
 
+## axhub 리소스 준비 — 데이터/시크릿 코드를 짜기 *전에* (에이전트 필수)
+
+> 사용자는 "방명록 저장되게 / 글 목록 보여줘 / OpenAI 로 요약" 처럼 **결과만** 말해요.
+> axhub 가 제공하는 **동적 DB** 와 **환경변수 주입** 은 사용자가 몰라요 — 에이전트가 코드보다 먼저 처리해야 배포 후에도 동작해요.
+> axhub 플러그인이 있으면 `tables` / `env` 스킬이 미리보기+동의까지 대신 처리해요. 아래 CLI 는 그 스킬이 없을 때의 정확한 명령 형태예요.
+
+### R1. 저장/조회/기록 요청 → 동적 테이블부터 (코드보다 먼저)
+데이터를 담을 테이블이 backend 에 **먼저 있어야** 해요. 없으면 코드가 404/400 으로 깨져요.
+1. 확인: `axhub tables list --app <APP_SLUG> --json`
+2. 없으면 생성. **사용자마다 자기 데이터만 보는 경우(대부분) → `owner_id` 컬럼 + `--owner-column owner_id`**:
+   ```bash
+   # id · created_at · updated_at 은 자동 추가 — 선언하지 마세요. 정수는 integer 아닌 int.
+   axhub tables create guestbook --app <APP_SLUG> \
+     --column 'owner_id:text' --column 'message:text' \
+     --owner-column owner_id --execute --json
+   ```
+
+### R2. owner_id 격리는 backend 몫 — 코드에서 owner_id 를 만지지 마세요
+- POST insert 시 `owner_id` 를 **직접 넣지 마세요**. 로그인 사용자로 backend 가 자동 설정해요.
+- GET 은 **본인 행만** 자동 반환돼요. owner_id 필터를 직접 걸지 마세요.
+- 모두가 공유하는 공용 테이블은 owner_column 없이 만들되, 그땐 조회에 **필터가 반드시** 있어야 해요 (owner 도 필터도 없으면 400).
+
+### R3. 데이터 호출은 로그인 세션 + 쿠키 ctx 안에서만
+- read/write 는 **로그인한 사용자의 세션 쿠키**로 인증돼요. 비로그인 호출은 401.
+- Astro 는 전역 `cookies()` 가 없어서, **호출마다 ctx 로 쿠키를 넘겨야** 인증돼요:
+  ```ts
+  const ctx = { cookie: Astro.request.headers.get('cookie') }
+  const list = await (await axhub.data('guestbook', {}, ctx)).json()                  // 내 행만
+  await axhub.data('guestbook', { method: 'POST', body: JSON.stringify({ message: '안녕' }) }, ctx)
+  ```
+- frontmatter · `src/pages/api/*.ts` 안에서만 (Framework-Specific 참조). `<script>` 태그(브라우저)에서 호출 금지.
+
+### R4. 코드가 secret(API 키 등)을 쓰면 → axhub env 에 등록 (배포 필수)
+`.env` 만 채우면 **로컬만** 돌아가요. 배포 환경엔 그 값이 없어 배포 preflight 가 막히거나 런타임에 `env: <KEY> not found` 로 깨져요.
+1. `axhub.yaml` 의 `env` 에 **이름과 scope 만** 선언 (값은 적지 않음). `scope` 는 `build` / `runtime` / `both` — 런타임에 쓰는 API 키는 `runtime`:
+   ```yaml
+   env:
+     required:
+       - { name: OPENAI_API_KEY, scope: runtime }
+   ```
+2. 값은 CLI 로 등록 (콘솔도 되지만 CLI 권장 · 값은 stdin 으로만 — 명령행 노출 방지). `--stage` 는 위 `scope` 와 같은 값:
+   ```bash
+   printf %s "$OPENAI_API_KEY" | axhub env set OPENAI_API_KEY --app <APP_SLUG> --secret --from-stdin --stage runtime --json
+   ```
+- `APPHUB_API_URL` / `APPHUB_APP_SLUG` / `APPHUB_TENANT` 는 axhub 가 **자동 주입**해요 — 직접 등록 불필요. 소스에 `{{...}}` 가 그대로 보이거나 `axhub.isConfigured()` 가 false 면 아직 미배포/미설정 상태이니, 코드를 깨지 말고 그 사실을 사용자에게 알려요.
+
 ## Framework-Specific Rules (Astro 5 SSR)
 
 - `astro.config.ts` 의 `output: "server"` + `adapter: node({ mode: "standalone" })` **절대 바꾸지 마요**. 이게 axhub 배포 핵심.
