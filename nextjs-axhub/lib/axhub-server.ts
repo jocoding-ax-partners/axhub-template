@@ -63,6 +63,7 @@ export async function makeAxhub(): Promise<AxHubClient> {
 
 // tenant + app 스코프까지 한 줄로 잡아주는 편의 helper.
 // vibe coder 가 가장 자주 쓰는 패턴: makeApp().data.discover('todos') 식.
+// 동적 테이블 read/write 는 보통 lib/data.ts 의 table() 을 거쳐요 (owner_id 격리 컨벤션 포함).
 export async function makeApp(): Promise<AppScopedClient> {
   const sdk = await makeAxhub()
   return sdk.tenant(TENANT).app(APP_SLUG)
