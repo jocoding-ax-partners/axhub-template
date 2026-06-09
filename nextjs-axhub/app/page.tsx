@@ -138,7 +138,8 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    import { makeApp } from "@/lib/axhub-server";
  *    const app = await makeApp(); // sdk.tenant(TENANT).app(APP_SLUG)
  *    const todos = await app.data.discover<{ id: string; title: string; done: boolean }>("todos");
- *    const page = await todos.list({ limit: 20 });
+ *    // list/count 는 최소 1개 where 필수 (mass-scan guard) — 없으면 ValidationError
+ *    const page = await todos.list({ where: where("done").eq(false), limit: 20 });
  *    await todos.insert({ title: "할 일", done: false });
  *
  * 3) Gateway · 외부 DB/SaaS 조회  (connector 이름으로, parameterized SQL, audit log)
@@ -152,10 +153,11 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    });
  *    // res.rows (컬럼 매핑된 객체) / res.rowCount / res.allowed (false 면 정책 deny)
  *
- * 4) Query DSL · where / and / or  (raw SQL 금지)
- *    import { where, and, or, defineSchema } from "@ax-hub/sdk";
+ * 4) Query DSL · where / and  (raw SQL 금지 · or/not 은 push 불가 → ValidationError)
+ *    import { where, and, defineSchema } from "@ax-hub/sdk";
  *    const Orders = defineSchema({ table: "orders", columns: { status: "string", total: "number" }});
- *    const filter = and(where(Orders.cols.status).eq("paid"), or(where("total").gt(100), where("priority").eq("high")));
+ *    // push 가능: top-level and + eq/ne/gt/gte/lt/lte/in/like — "A 또는 B" 는 in([...]) 으로
+ *    const filter = and(where(Orders.cols.status).eq("paid"), where("priority").in(["high", "urgent"]));
  *    const page = await app.data.table(Orders).list({ where: filter, select: ["status","total"] as const, limit: 50 });
  *
  * 5) 에러 처리 · error.code 분기  (Korean message 매칭 금지)

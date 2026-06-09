@@ -53,11 +53,13 @@ export async function GET() {
 
 ```ts
 // 예: 앱 데이터 CRUD — sdk.tenant().app().data 까지 helper 한 줄로
+import { where } from "@ax-hub/sdk";
 import { makeApp } from "@/lib/axhub-server";
 
 const app = await makeApp();
 const todos = await app.data.discover<{ id: string; title: string; done: boolean }>("todos");
-const page = await todos.list({ limit: 20 });
+// list/count 는 최소 1개 where 필터가 필수예요 (백엔드 mass-scan guard — 없으면 ValidationError).
+const page = await todos.list({ where: where("done").eq(false), limit: 20 });
 await todos.insert({ title: "할 일", done: false });
 ```
 
@@ -93,11 +95,14 @@ export async function GET() {
 
 ### 3-B. Query DSL — 데이터 API filter
 
-`app.data.table(...).list({ where })` 에는 `where()` / `and()` / `or()` / `not()` 헬퍼 조합만 넣어요.
+`app.data.table(...).list({ where })` 에는 `where()` / `and()` 헬퍼 조합만 넣어요.
+라이브 백엔드에 push 가능한 건 **top-level `and` + `eq/ne/gt/gte/lt/lte/in/like`** 뿐이에요 —
+`or()` / `not()` 은 push 불가라 SDK 가 `ValidationError` 로 즉시 거부해요 ("A 또는 B" 는 `in([...])` 으로,
+그 외 OR 분기는 호출을 나눠서). `list`/`count` 는 최소 1개 where 가 필수예요 (mass-scan guard).
 LIKE 패턴은 `%` / `_` 자동 escape + ReDoS 가드 내장이라 사용자 입력 그대로 넣어도 안전.
 
 ```ts
-import { where, and, or, not, defineSchema } from "@ax-hub/sdk";
+import { where, and, defineSchema } from "@ax-hub/sdk";
 import { makeApp } from "@/lib/axhub-server";
 
 const Orders = defineSchema({
@@ -112,8 +117,8 @@ const Orders = defineSchema({
 const app = await makeApp();
 const filter = and(
   where(Orders.cols.status).eq("paid"),
-  or(where(Orders.cols.total).gt(100), where("priority").eq("high")),
-  not(where("archived").eq(true)),
+  where(Orders.cols.total).gt(100),
+  where("priority").in(["high", "urgent"]),   // "A 또는 B" 는 in 으로 표현해요
 );
 const page = await app.data.table(Orders).list({
   where: filter,

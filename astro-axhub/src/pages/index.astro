@@ -37,10 +37,12 @@ const tenant = me?.tenants?.[0];
  *
  * 2) 앱 데이터 · sdk.data.discover  (스키마 자동 추론)
  *    import { table } from "../lib/axhub-server";
- *    const todos = await table<{ id: string; title: string }>("todos", {
+ *    import { where } from "@ax-hub/sdk";
+ *    const todos = await table<{ id: string; title: string; created_at: string }>("todos", {
  *      cookie: Astro.request.headers.get("cookie"),
  *    });
- *    const list = await todos.list({ limit: 20 });
+ *    // list/count 는 최소 1개 where 필수 (mass-scan guard)
+ *    const list = await todos.list({ where: where("created_at").gte("1970-01-01T00:00:00Z"), limit: 20 });
  *    await todos.insert({ title: "할 일" });
  *
  * 원본 identity.me 응답을 그대로 보고 싶으면 /ssr 페이지 참고.

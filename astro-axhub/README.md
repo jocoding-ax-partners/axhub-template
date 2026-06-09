@@ -47,11 +47,13 @@ const me = await sdk.identity.me();
 동적 테이블은 런타임 스키마 introspection 이 들어간 `table<Row>()` 헬퍼를 쓰세요.
 
 ```ts
+import { where } from "@ax-hub/sdk";
 import { table } from "../lib/axhub-server";
-const todos = await table<{ id: string; title: string }>("todos", {
+const todos = await table<{ id: string; title: string; created_at: string }>("todos", {
   cookie: Astro.request.headers.get("cookie"),
 });
-const page = await todos.list({ limit: 20 });
+// list/count 는 최소 1개 where 필터가 필수예요 (mass-scan guard — 없으면 ValidationError).
+const page = await todos.list({ where: where("created_at").gte("1970-01-01T00:00:00Z"), limit: 20 });
 await todos.insert({ title: "할 일" }); // owner_id 는 backend 가 자동
 ```
 

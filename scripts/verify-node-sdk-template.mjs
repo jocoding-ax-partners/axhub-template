@@ -19,8 +19,24 @@ const requireDep = (path, dep, expected) => {
   if (actual !== expected) failures.push(`${path}: ${dep} expected ${expected}, got ${actual ?? 'missing'}`)
 }
 
-requireDep('nextjs-axhub/package.json', '@ax-hub/sdk', '^2.0.0')
-requireDep('astro-axhub/package.json', '@ax-hub/sdk', '^2.0.0')
+requireDep('nextjs-axhub/package.json', '@ax-hub/sdk', '^2.1.1')
+requireDep('astro-axhub/package.json', '@ax-hub/sdk', '^2.1.1')
+
+// 2.1.x data contract — guides must teach what the live backend actually accepts.
+// (verified by live-prod E2E against api.axhub.ai: where_required guard, or/not
+// non-pushable, offset-only pagination.)
+for (const doc of [
+  'nextjs-axhub/README.md', 'nextjs-axhub/AGENTS.md', 'nextjs-axhub/app/page.tsx',
+  'astro-axhub/README.md', 'astro-axhub/AGENTS.md', 'astro-axhub/src/pages/index.astro',
+]) {
+  requireNotIncludes(doc, 'or(where', 'or() is non-pushable — live backend rejects it with ValidationError')
+  requireNotIncludes(doc, 'not(where', 'not() is non-pushable — live backend rejects it with ValidationError')
+  requireNotIncludes(doc, 'after: first.nextCursor', 'after/before keyset cursors are deprecated — LegacyCursorError on 2.1.x')
+  requireNotIncludes(doc, '.list({ limit:', 'data list() requires at least one where filter (mass-scan guard)')
+  requireNotIncludes(doc, '.list({ limit ', 'data list() requires at least one where filter (mass-scan guard)')
+}
+requireIncludes('nextjs-axhub/AGENTS.md', 'where_required', 'agent guide must document the where-required guard')
+requireIncludes('astro-axhub/AGENTS.md', 'where_required', 'agent guide must document the where-required guard')
 
 requireIncludes('nextjs-axhub/lib/axhub-server.ts', "import { AxHubClient", 'Next server helper must use SDK')
 requireIncludes('nextjs-axhub/lib/axhub-server.ts', "defaultTenantSlug: TENANT", 'Next helper must scope tenant by injected slug')

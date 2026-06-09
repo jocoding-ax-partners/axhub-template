@@ -47,11 +47,13 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk
 - read/write 는 **로그인한 사용자의 세션 쿠키**로 인증돼요. 비로그인 호출은 401.
 - Astro 는 전역 `cookies()` 가 없어서, **호출마다 ctx 로 쿠키를 넘겨야** 인증돼요:
   ```ts
+  import { where } from '@ax-hub/sdk'
   import { table } from '../lib/axhub-server'
 
   const ctx = { cookie: Astro.request.headers.get('cookie') }
   const guestbook = await table<{ id: string; message: string; created_at: string }>('guestbook', ctx)
-  const page = await guestbook.list({ limit: 20 })         // 내 행만 자동 반환
+  // list/count 는 최소 1개 where 필수 (mass-scan guard — 없으면 ValidationError(code: 'where_required'))
+  const page = await guestbook.list({ where: where('created_at').gte('1970-01-01T00:00:00Z'), limit: 20 })  // 내 행만 자동 반환
   await guestbook.insert({ message: '안녕' })              // owner_id 는 backend 가 자동
   ```
 - 사용자/테넌트 정보나 일반 Hub API 는 `makeAxhub(ctx)` / `makeApp(ctx)` 로 호출해요.
