@@ -58,7 +58,8 @@ import { makeApp } from "@/lib/axhub-server";
 
 const app = await makeApp();
 const todos = await app.data.discover<{ id: string; title: string; done: boolean }>("todos");
-// list/count 는 최소 1개 where 필터가 필수예요 (백엔드 mass-scan guard — 없으면 ValidationError).
+// owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환해요 (SDK ≥2.1.2).
+// non-owner-scoped 테이블은 최소 1개 where 필터가 필수예요 (mass-scan guard — 없으면 ValidationError).
 const page = await todos.list({ where: where("done").eq(false), limit: 20 });
 await todos.insert({ title: "할 일", done: false });
 ```
@@ -98,7 +99,8 @@ export async function GET() {
 `app.data.table(...).list({ where })` 에는 `where()` / `and()` 헬퍼 조합만 넣어요.
 라이브 백엔드에 push 가능한 건 **top-level `and` + `eq/ne/gt/gte/lt/lte/in/like`** 뿐이에요 —
 `or()` / `not()` 은 push 불가라 SDK 가 `ValidationError` 로 즉시 거부해요 ("A 또는 B" 는 `in([...])` 으로,
-그 외 OR 분기는 호출을 나눠서). `list`/`count` 는 최소 1개 where 가 필수예요 (mass-scan guard).
+그 외 OR 분기는 호출을 나눠서). `list`/`count` 는 non-owner-scoped 테이블에서 최소 1개 where 가 필수예요
+(mass-scan guard) — owner-scoped 테이블(owner_column)은 무필터 호출이 내 행만 자동 반환해요 (SDK ≥2.1.2).
 LIKE 패턴은 `%` / `_` 자동 escape + ReDoS 가드 내장이라 사용자 입력 그대로 넣어도 안전.
 
 ```ts

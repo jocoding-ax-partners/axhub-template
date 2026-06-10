@@ -52,7 +52,8 @@ import { table } from "../lib/axhub-server";
 const todos = await table<{ id: string; title: string; created_at: string }>("todos", {
   cookie: Astro.request.headers.get("cookie"),
 });
-// list/count 는 최소 1개 where 필터가 필수예요 (mass-scan guard — 없으면 ValidationError).
+// owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환해요 (SDK ≥2.1.2).
+// non-owner-scoped 테이블은 최소 1개 where 필터가 필수예요 (mass-scan guard — 없으면 ValidationError).
 const page = await todos.list({ where: where("created_at").gte("1970-01-01T00:00:00Z"), limit: 20 });
 await todos.insert({ title: "할 일" }); // owner_id 는 backend 가 자동
 ```

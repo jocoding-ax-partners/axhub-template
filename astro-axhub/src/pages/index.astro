@@ -41,7 +41,7 @@ const tenant = me?.tenants?.[0];
  *    const todos = await table<{ id: string; title: string; created_at: string }>("todos", {
  *      cookie: Astro.request.headers.get("cookie"),
  *    });
- *    // list/count 는 최소 1개 where 필수 (mass-scan guard)
+ *    // owner-scoped 테이블은 무필터 list 가 내 행만 반환 (SDK ≥2.1.2); 그 외는 where 필수 (mass-scan guard)
  *    const list = await todos.list({ where: where("created_at").gte("1970-01-01T00:00:00Z"), limit: 20 });
  *    await todos.insert({ title: "할 일" });
  *

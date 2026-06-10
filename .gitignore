@@ -61,3 +61,6 @@ bun.lockb
 # GitNexus knowledge graph output (per-developer auto-generated, never push)
 graphify-out/
 .gitnexus/
+
+# live-QA session artifacts (never commit)
+.qa-live/

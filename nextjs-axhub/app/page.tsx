@@ -138,7 +138,8 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    import { makeApp } from "@/lib/axhub-server";
  *    const app = await makeApp(); // sdk.tenant(TENANT).app(APP_SLUG)
  *    const todos = await app.data.discover<{ id: string; title: string; done: boolean }>("todos");
- *    // list/count 는 최소 1개 where 필수 (mass-scan guard) — 없으면 ValidationError
+ *    // owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환 (SDK ≥2.1.2).
+ *    // non-owner-scoped 테이블은 최소 1개 where 필수 (mass-scan guard — ValidationError)
  *    const page = await todos.list({ where: where("done").eq(false), limit: 20 });
  *    await todos.insert({ title: "할 일", done: false });
  *
