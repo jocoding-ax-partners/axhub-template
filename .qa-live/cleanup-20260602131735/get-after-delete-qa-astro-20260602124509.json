@@ -1,0 +1,9 @@
+{
+  "schema_version": "1",
+  "status": "error",
+  "error": {
+    "code": "usage",
+    "category": "client_error",
+    "hint": "validation.usage_error: App with slug or id \"qa-astro-20260602124509\" not found. (hint: Verify the slug with 'axhub apps list' or pass the app UUID.)"
+  }
+}

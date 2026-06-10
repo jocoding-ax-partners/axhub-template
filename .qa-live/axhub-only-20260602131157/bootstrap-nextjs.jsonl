@@ -1,0 +1,21 @@
+{
+  "schema_version": "1",
+  "status": "ok",
+  "data": {
+    "accepted": {
+      "bootstrap_id": "bcb48882-c7bd-4435-96ac-73748d5a6574",
+      "status_url": "/api/v1/tenants/41bbce46-55cf-4bd6-b8c3-8c602c971afa/app-bootstraps/bcb48882-c7bd-4435-96ac-73748d5a6574"
+    },
+    "status": {
+      "app_id": "262e1558-14c3-43c1-b714-090a245a23e6",
+      "deployment_id": "27723fdc-44d6-4926-b076-739537b9014d",
+      "error_code": null,
+      "error_message": null,
+      "id": "bcb48882-c7bd-4435-96ac-73748d5a6574",
+      "repo_full_name": "jocoding-ax-partners/axhub-template-qa-nextjs-axhubonly-20260602131157",
+      "stage": "done",
+      "status": "done"
+    }
+  },
+  "request_id": "req_160dd14e1a2f423e981048e7"
+}

@@ -1,0 +1,16 @@
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+Events:
+  Type    Reason     Age   From                                   Message
+  ----    ------     ----  ----                                   -------
+  Normal  Scheduled  31s   gke.io/optimize-utilization-scheduler  Successfully assigned axhub-jocodingax-qa-a-131157/qa-a-131157-9f495dfb7-7ks8v to gk3-axhub-prod-pool-1-a9b81423-k975
+  Normal  Pulling    31s   kubelet                                Pulling image "asia-northeast3-docker.pkg.dev/hopeful-vine-491406-a6/axhub-apps/jocodingax-qa-a-131157:73a421f37167"
+  Normal  Pulled     30s   kubelet                                Successfully pulled image "asia-northeast3-docker.pkg.dev/hopeful-vine-491406-a6/axhub-apps/jocodingax-qa-a-131157:73a421f37167" in 1.086s (1.086s including waiting). Image size: 101949164 bytes.
+  Normal  Created    30s   kubelet                                Container created
+  Normal  Started    29s   kubelet                                Container started

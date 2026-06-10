@@ -52,7 +52,8 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk
 
   const ctx = { cookie: Astro.request.headers.get('cookie') }
   const guestbook = await table<{ id: string; message: string; created_at: string }>('guestbook', ctx)
-  // list/count 는 최소 1개 where 필수 (mass-scan guard — 없으면 ValidationError(code: 'where_required'))
+  // owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환 (SDK ≥2.1.2).
+  // non-owner-scoped 테이블은 최소 1개 where 필수 (mass-scan guard — ValidationError(code: 'where_required'))
   const page = await guestbook.list({ where: where('created_at').gte('1970-01-01T00:00:00Z'), limit: 20 })  // 내 행만 자동 반환
   await guestbook.insert({ message: '안녕' })              // owner_id 는 backend 가 자동
   ```

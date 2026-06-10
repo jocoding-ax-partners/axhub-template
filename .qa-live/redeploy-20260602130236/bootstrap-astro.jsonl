@@ -1,0 +1,21 @@
+{
+  "schema_version": "1",
+  "status": "ok",
+  "data": {
+    "accepted": {
+      "bootstrap_id": "beff78ce-5acf-4df4-a104-c219b471257d",
+      "status_url": "/api/v1/tenants/41bbce46-55cf-4bd6-b8c3-8c602c971afa/app-bootstraps/beff78ce-5acf-4df4-a104-c219b471257d"
+    },
+    "status": {
+      "app_id": "e04993d6-2d8b-40ba-b73a-6de3d1d937bc",
+      "deployment_id": "81c0604c-90cb-4dd6-81cd-34d03d19de2a",
+      "error_code": null,
+      "error_message": null,
+      "id": "beff78ce-5acf-4df4-a104-c219b471257d",
+      "repo_full_name": "jocoding-ax-partners/axhub-template-qa-astro-20260602130236",
+      "stage": "done",
+      "status": "done"
+    }
+  },
+  "request_id": "req_258099221a7c4751b74a569b"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "ebf75760-40d7-427f-b293-4d654f924d57",
+  "app_id": "a8672d49-07e1-4d94-9c3a-3edbf6078382",
+  "commit_sha": "d8bad5b46f5dd10732a332dfe3e8863973b1879e",
+  "status": "running",
+  "current_stage": "build",
+  "image_uri": null,
+  "trigger_source": "manual",
+  "started_at": "2026-06-02T03:48:12.910161Z",
+  "completed_at": null,
+  "failure_reason": null,
+  "cloud_build_id": null,
+  "ci_cloud_build_id": null,
+  "webhook_event_id": null,
+  "ci_status": null,
+  "ci_cache_hit": null,
+  "cancel_requested_at": null,
+  "stages": [],
+  "deploy_method": null,
+  "services": []
+}

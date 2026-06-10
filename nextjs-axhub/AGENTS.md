@@ -216,7 +216,7 @@ const page3 = await app.data.table(Orders).list({ ...opts, page: 3, pageSize: 50
 
 #### 절대 규칙 (DSL)
 - ✅ 모든 필터는 `where()` / `and()` 헬퍼 조합 (or/not 은 push 불가 → ValidationError).
-- ✅ `list` / `count` 는 **최소 1개 where 필수** (mass-scan guard — 없으면 `ValidationError(code: 'where_required')`).
+- ✅ `list` / `count` 는 non-owner-scoped 테이블에서 **최소 1개 where 필수** (mass-scan guard — 없으면 `ValidationError(code: 'where_required')`). **owner-scoped 테이블(owner_column 설정)은 무필터 호출이 합법** — 내 행만 자동 반환돼요 (SDK ≥2.1.2).
 - ✅ 검색어는 사용자 입력 그대로 `like.contains(userInput)` 에 넘겨도 안전 (escape 자동).
 - ❌ `raw('SELECT ...')` 는 사용자가 명시 요청할 때만 — 보통은 쓸 일 없어요 (data API 는 `where` 가 SQL 을 대신함).
 - ❌ `where` 인자로 문자열 SQL 직접 박는 거 금지 (`where: 'status = paid'` 같은 거 ❌).

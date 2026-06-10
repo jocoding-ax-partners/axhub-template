@@ -1,0 +1,9 @@
+{
+  "schema_version": "1",
+  "status": "error",
+  "error": {
+    "code": "usage",
+    "category": "client_error",
+    "hint": "validation.flag_required: subdomain: subdomain length must be 2..32; got 33 (hint: Use a lowercase non-reserved subdomain.)"
+  }
+}

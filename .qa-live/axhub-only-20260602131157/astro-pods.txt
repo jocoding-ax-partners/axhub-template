@@ -1,0 +1,2 @@
+NAME                          READY   STATUS    RESTARTS   AGE   IP              NODE                                  NOMINATED NODE   READINESS GATES
+qa-a-131157-9f495dfb7-7ks8v   1/1     Running   0          30s   10.14.128.144   gk3-axhub-prod-pool-1-a9b81423-k975   <none>           <none>

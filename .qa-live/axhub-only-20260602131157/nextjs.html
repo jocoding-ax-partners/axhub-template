@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AppHub</title>
+    <script>
+      // FOUC prevention — set data-theme before React mounts.
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme') || 'system'
+          var resolved = stored === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : stored
+          document.documentElement.setAttribute('data-theme', resolved)
+        } catch (_) {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+    <!-- Pretendard (CDN) — AXHub-recommended primary font. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <script type="module" crossorigin src="/assets/index-DDlNy_rk.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-QTnfLwEv.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-gCB6t_Mq.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-router-C2IMLNwx.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-BYxnPtKu.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-sentry-CHvWR40D.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-query-DtdfCI4x.js">
+    <link rel="modulepreload" crossorigin href="/assets/client-BSop-_Go.js">
+    <link rel="modulepreload" crossorigin href="/assets/buttonSizeContext-DB8Kgxfs.js">
+    <link rel="modulepreload" crossorigin href="/assets/useAuth-DwDd4J3s.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-BTuXP1Um.js">
+    <link rel="stylesheet" crossorigin href="/assets/vendor-react-CHpVij2M.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-BCjxtbA-.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

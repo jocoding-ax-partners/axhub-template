@@ -1,0 +1,21 @@
+{
+  "id": "4f9b9cdf-4011-4352-a3d7-73ce1da265e8",
+  "app_id": "0a7e2af5-56be-4e9f-9914-39c3c282a53b",
+  "commit_sha": "c3874205d359ce4f7e8d56bb4ca54feda3b4f532",
+  "status": "succeeded",
+  "current_stage": null,
+  "image_uri": "asia-northeast3-docker.pkg.dev/hopeful-vine-491406-a6/axhub-apps/jocodingax-qa-nextjs-20260602130236:c3874205d359",
+  "trigger_source": "manual",
+  "started_at": "2026-06-02T04:03:31.237154Z",
+  "completed_at": "2026-06-02T04:06:18.753826Z",
+  "failure_reason": null,
+  "cloud_build_id": null,
+  "ci_cloud_build_id": null,
+  "webhook_event_id": null,
+  "ci_status": null,
+  "ci_cache_hit": null,
+  "cancel_requested_at": null,
+  "stages": [],
+  "deploy_method": null,
+  "services": []
+}

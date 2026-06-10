@@ -19,8 +19,8 @@ const requireDep = (path, dep, expected) => {
   if (actual !== expected) failures.push(`${path}: ${dep} expected ${expected}, got ${actual ?? 'missing'}`)
 }
 
-requireDep('nextjs-axhub/package.json', '@ax-hub/sdk', '^2.1.1')
-requireDep('astro-axhub/package.json', '@ax-hub/sdk', '^2.1.1')
+requireDep('nextjs-axhub/package.json', '@ax-hub/sdk', '^2.1.2')
+requireDep('astro-axhub/package.json', '@ax-hub/sdk', '^2.1.2')
 
 // 2.1.x data contract — guides must teach what the live backend actually accepts.
 // (verified by live-prod E2E against api.axhub.ai: where_required guard, or/not
