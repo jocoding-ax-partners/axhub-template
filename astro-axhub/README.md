@@ -26,12 +26,12 @@ npm run dev
 
 ```
 src/pages/blog.astro 만들어줘.
-- frontmatter: `makeAxhub({ cookie })` 또는 `table("posts", { cookie })` 로 SDK 2.x 호출 결과를 posts 변수로
+- frontmatter: `makeAxhub({ cookie })` 또는 `table("posts", { cookie })` 로 SDK 3.x 호출 결과를 posts 변수로
 - 템플릿: posts.map 으로 카드 그리드
 - style: scoped CSS, 모바일 친화
 ```
 
-## 3. axhub Hub API 쓰기 (`@ax-hub/sdk 2.x`)
+## 3. axhub Hub API 쓰기 (`@ax-hub/sdk 3.x`)
 
 `src/lib/axhub-server.ts` — Astro frontmatter / API endpoint 에서 import. 들어온 요청의 axhub 세션 쿠키를 SDK factory 에 넘겨 *그 사용자 자격*으로 호출해요.
 
@@ -109,7 +109,7 @@ npx astro add react   # config 자동 수정
 ## axhub-server.ts 신뢰 모델 (이 템플릿)
 
 이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
-Hub 호출은 `@ax-hub/sdk 2.x` 의 `AxHubClient` 한 종류만 — helper 는 `makeAxhub` / `makeApp` / `makeTenant` / `table` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요.
+Hub 호출은 `@ax-hub/sdk 3.x` 의 `AxHubClient` 한 종류만 — helper 는 `makeAxhub` / `makeApp` / `makeTenant` / `table` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요.
 인증은 axhub 로그인 세션 쿠키(`_hub_access`)로: 호출 시 넘긴 `Astro.request` 쿠키를 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 써요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 

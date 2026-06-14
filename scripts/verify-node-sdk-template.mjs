@@ -19,8 +19,8 @@ const requireDep = (path, dep, expected) => {
   if (actual !== expected) failures.push(`${path}: ${dep} expected ${expected}, got ${actual ?? 'missing'}`)
 }
 
-requireDep('nextjs-axhub/package.json', '@ax-hub/sdk', '^2.1.2')
-requireDep('astro-axhub/package.json', '@ax-hub/sdk', '^2.1.2')
+requireDep('nextjs-axhub/package.json', '@ax-hub/sdk', '^3.0.0')
+requireDep('astro-axhub/package.json', '@ax-hub/sdk', '^3.0.0')
 
 // 2.1.x data contract — guides must teach what the live backend actually accepts.
 // (verified by live-prod E2E against api.axhub.ai: where_required guard, or/not
@@ -53,10 +53,26 @@ requireNotIncludes('astro-axhub/src/lib/axhub.ts', 'fetch(url', 'Astro must not 
 requireIncludes('astro-axhub/src/pages/index.astro', 'makeAxhub', 'Astro index must demonstrate SDK identity call')
 requireIncludes('astro-axhub/src/pages/ssr.astro', 'makeAxhub', 'Astro SSR demo must demonstrate SDK identity call')
 
+// SDK 3.x gateway model — grant-based sessions replace the removed catalog/engines surface
+// and the in-band allowed flag (verified against backend 15fd5a2 + live prod E2E).
+requireIncludes('nextjs-axhub/lib/axhub-server.ts', 'gw.me.connectors()', 'gateway helper must resolve connectors via me.connectors() (SDK 3.x)')
+requireIncludes('nextjs-axhub/lib/axhub-server.ts', 'gw.sessions.create', 'gateway helper must open a grant-based session (SDK 3.x)')
+requireIncludes('nextjs-axhub/lib/axhub-server.ts', 'gw.sessions.end', 'gateway helper must close the session in finally (SDK 3.x)')
+for (const doc of [
+  'nextjs-axhub/lib/axhub-server.ts', 'nextjs-axhub/AGENTS.md', 'nextjs-axhub/README.md',
+  'nextjs-axhub/app/page.tsx', 'nextjs-axhub/prompts/getting-started.md',
+]) {
+  requireNotIncludes(doc, 'catalog.listConnectors', 'gateway catalog surface removed in SDK 3.x — use me.connectors()')
+  requireNotIncludes(doc, 'connectors.list()', 'gateway connectors.list() removed in SDK 3.x — use me.connectors()')
+  requireNotIncludes(doc, 'engines.list', 'gateway engines surface removed in SDK 3.x')
+  requireNotIncludes(doc, 'res.allowed === false', 'in-band allowed flag removed — policy deny throws PermissionDeniedError (SDK 3.x)')
+  requireNotIncludes(doc, 'PoolStaleError', 'gateway expiry surfaces as UnauthenticatedError in SDK 3.x, not PoolStaleError')
+}
+
 requireNotIncludes('vite-react-axhub/AGENTS.md', '@ax-hub/sdk', 'Vite browser template must not instruct agents to use the Node SDK in client bundles')
 requireIncludes('vite-react-axhub/AGENTS.md', '브라우저 전용 세션 fetch 헬퍼', 'Vite docs must state browser-only helper boundary')
-requireIncludes('README.md', '@ax-hub/sdk 2.x', 'root README must document Node SDK version boundary')
-requireIncludes('docs/bootstrap-prep.md', '@ax-hub/sdk 2.x', 'bootstrap docs must document Node SDK version boundary')
+requireIncludes('README.md', '@ax-hub/sdk 3.x', 'root README must document Node SDK version boundary')
+requireIncludes('docs/bootstrap-prep.md', '@ax-hub/sdk 3.x', 'bootstrap docs must document Node SDK version boundary')
 
 if (failures.length) {
   console.error(failures.join('\n'))
