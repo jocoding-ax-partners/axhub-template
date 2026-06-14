@@ -91,34 +91,41 @@ export async function makeGateway(): Promise<TenantGatewayClient> {
 }
 
 // 외부 DB/SaaS connector 조회 — connector "이름" 으로 호출하면 UUID 를 자동 resolve 해요 (UUID 하드코딩 불필요).
-// gateway 함정(tenant UUID 스코프 · connector UUID · parameterized SQL)을 전부 감싼 편의 helper.
+// gateway 함정(tenant UUID 스코프 · grant 기반 session · connector UUID · parameterized SQL)을 전부 감싼 편의 helper.
+//
+// SDK 3.x gateway 모델: connector 에 활성 grant 가 있어야 session 을 열 수 있고, SQL 은 그 session 으로 실행해요.
+// 이 helper 가 (grant 보유 connector resolve → session open → query → session close) 를 한 번에 처리해요.
 //
 //   const { rows } = await queryConnector<{ id: number; name: string }>({
-//     connector: 'my-db',          // connector 이름 (gateway.catalog.listConnectors() 의 .name) — UUID 아님
-//     path: 'public/employees',    // connector 안 리소스 경로 (스키마/테이블)
-//     sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수 (path 의 '/'→'.' 변환)
+//     connector: 'my-db',          // connector 이름 (gateway.me.connectors() 의 .name) — UUID 아님
+//     sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수
 //     params: [true, 100],         // ✅ 항상 parameterized — 사용자 입력을 sql 문자열에 직접 박지 마요
 //   })
-//   // rows: 컬럼명으로 매핑된 객체 배열 · res.allowed=false 면 정책 deny (res.denyReason) · res.columns 메타
+//   // rows: 컬럼명으로 매핑된 객체 배열 · rowCount · columns 메타
+//   // 정책 deny 는 in-band 플래그가 아니라 throw — PermissionDeniedError(403) / 세션 만료는 UnauthenticatedError(401) 로 분기.
 export async function queryConnector<Row extends Record<string, unknown> = Record<string, unknown>>(input: {
   connector: string
-  path: string
   sql: string
   params?: unknown[]
-  rowLimit?: number
 }): Promise<GatewayQueryResult<Row>> {
   const gw = await makeGateway()
-  const connectors = await gw.catalog.listConnectors()
+  // me.connectors() 는 현재 사용자가 활성 grant 를 가진 connector 만 반환해요 (grant 없으면 목록에 안 보여요).
+  const connectors = await gw.me.connectors()
   const connector = connectors.find((c) => c.name === input.connector)
   if (!connector) {
-    const names = connectors.map((c) => c.name).join(', ') || '(없음)'
+    const names = connectors.map((c) => c.name).join(', ') || '(없음 — 이 사용자가 활성 grant 를 가진 connector 가 없어요)'
     throw new Error(`connector '${input.connector}' 를 찾지 못했어요. 사용 가능: ${names}`)
   }
-  return gw.query.run<Row>({
-    connectorId: connector.id,
-    path: input.path,
-    sql: input.sql,
-    params: input.params ?? [],
-    ...(input.rowLimit !== undefined ? { rowLimit: input.rowLimit } : {}),
-  })
+  // grant 기반 session 을 열고, 끝나면 반드시 닫아요 (finally).
+  const session = await gw.sessions.create({ connectorId: connector.id })
+  try {
+    return await gw.query.run<Row>({
+      sessionId: session.id,
+      sql: input.sql,
+      params: input.params ?? [],
+    })
+  } finally {
+    // best-effort close — 이미 만료/종료된 session 의 close 실패는 조회 결과에 영향 없어요.
+    await gw.sessions.end(session.id).catch(() => {})
+  }
 }

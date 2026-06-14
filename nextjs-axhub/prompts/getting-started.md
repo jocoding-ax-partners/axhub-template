@@ -15,7 +15,7 @@ app/page.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명]
 ## 2. axhub Hub API 호출하는 페이지
 
 ```
-/me 라우트 만들어줘. @ax-hub/sdk 2.x 의 sdk.identity.me 를 Server Component 에서 호출해서
+/me 라우트 만들어줘. @ax-hub/sdk 3.x 의 sdk.identity.me 를 Server Component 에서 호출해서
 로그인 사용자 정보 + 소속 tenant 목록을 카드로 보여줘.
 lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기.
 ```
@@ -32,18 +32,18 @@ ConflictError / ValidationError 분기 처리. 저장 성공하면 "감사합니
 
 ```
 app/employees 라우트 만들어줘. lib/axhub-server.ts 의 queryConnector() 로
-const res = await queryConnector({ connector: "my-db", path: "public/employees",
+const res = await queryConnector({ connector: "my-db",
 sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?", params: [true, 20] })
-호출해서 res.rows 를 테이블로 렌더. connector 는 "이름" 으로 넘기면 helper 가 UUID 를 자동 resolve 해.
-connector / sql 은 코드 상수로 (사용자 입력은 반드시 params 로). res.allowed === false 면 정책 deny 안내.
-AxHubError 는 .code 로 분기 (PoolStaleError / PermissionDeniedError).
+호출해서 res.rows 를 테이블로 렌더. connector 는 "이름" 으로 넘기면 helper 가 grant·session·UUID 를 자동 처리해.
+connector / sql 은 코드 상수로 (사용자 입력은 반드시 params 로). 정책 deny 는 throw 라 try/catch 로 안내.
+AxHubError 는 .code 로 분기 (PermissionDeniedError / UnauthenticatedError).
 ```
 
 ## 3-B. Query DSL — 필터된 목록
 
 ```
 app/orders 라우트에 결제 완료 + 금액 100 이상 주문만 보여주는 페이지.
-@ax-hub/sdk 2.x 의 defineSchema 로 Orders 스키마 잡고, where / and / or 로 filter 만들어
+@ax-hub/sdk 3.x 의 defineSchema 로 Orders 스키마 잡고, where / and / or 로 filter 만들어
 makeApp().data.table(Orders).list({ where, select: ['id','total'] as const, orderBy, limit: 50 }).
 페이지네이션은 nextCursor / firstCursor 로 prev/next 버튼.
 ```

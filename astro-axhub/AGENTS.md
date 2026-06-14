@@ -7,7 +7,7 @@
 비전공자 한국인 vibe coder. 한국어로 답해요. 콘텐츠 사이트 + SSR. 결과는 브라우저로 확인.
 
 ## Stack
-Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk 2.x (서버 호출 전용)**. **SSR.**
+Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk 3.x (서버 호출 전용)**. **SSR.**
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -43,7 +43,7 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk
 - GET 은 **본인 행만** 자동 반환돼요. owner_id 필터를 직접 걸지 마세요.
 - 모두가 공유하는 공용 테이블은 owner_column 없이 만들되, 그땐 조회에 **필터가 반드시** 있어야 해요 (owner 도 필터도 없으면 400).
 
-### R3. 데이터 호출은 SDK 2.x + 로그인 세션 쿠키 ctx 안에서만
+### R3. 데이터 호출은 SDK 3.x + 로그인 세션 쿠키 ctx 안에서만
 - read/write 는 **로그인한 사용자의 세션 쿠키**로 인증돼요. 비로그인 호출은 401.
 - Astro 는 전역 `cookies()` 가 없어서, **호출마다 ctx 로 쿠키를 넘겨야** 인증돼요:
   ```ts
@@ -92,7 +92,7 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **@ax-hub/sdk
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행). Hub 호출은 `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 2.x` factory(`makeAxhub` / `makeApp` / `table`)만 믿어요.
+이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행). Hub 호출은 `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 3.x` factory(`makeAxhub` / `makeApp` / `table`)만 믿어요.
 인증: 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 씀. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포

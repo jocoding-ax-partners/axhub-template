@@ -7,7 +7,7 @@
 비전공자 한국인 vibe coder. 한국어로 답해요. 코드 용어는 풀어서 설명해요. 결과는 화면으로 확인.
 
 ## Stack
-Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ · **`@ax-hub/sdk 2.x`** (백엔드 호출은 항상 SDK 경유).
+Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ · **`@ax-hub/sdk 3.x`** (백엔드 호출은 항상 SDK 경유).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -20,7 +20,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 3. **No unprompted refactor** — X 요청에 Y / Z 같이 "개선" 금지. 변경한 모든 line 이 X 와 직접 관련.
    추가로 할 일은 한국어로 적어두고 사용자가 결정.
 4. **Honest failure** — 못 만들면 plainly 말해요. "아직 안 풀렸어요. 시도: A, B. 모름: C." 가짜 진행/성공 보고 금지.
-5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요. (단, `@ax-hub/sdk 2.x` 는 이미 설치돼 있으니 다시 설치 금지.)
+5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요. (단, `@ax-hub/sdk 3.x` 는 이미 설치돼 있으니 다시 설치 금지.)
 
 ## axhub 리소스 준비 — 데이터/시크릿 코드를 짜기 *전에* (에이전트 필수)
 
@@ -66,7 +66,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 
 ## SDK 사용 프로토콜 (axhub 백엔드 호출 규칙)
 
-> 이 템플릿의 axhub 백엔드 호출은 **항상** `@ax-hub/sdk 2.x` 경유. raw `fetch()` 로 `api.axhub.ai` 를 직접 때리면 안 돼요.
+> 이 템플릿의 axhub 백엔드 호출은 **항상** `@ax-hub/sdk 3.x` 경유. raw `fetch()` 로 `api.axhub.ai` 를 직접 때리면 안 돼요.
 > 사용자 자격은 `lib/axhub-server.ts` 의 `makeAxhub()` factory 가 자동 처리해요.
 
 ### S1. 진입점은 factory 만 — 모듈 레벨 클라이언트 금지
@@ -108,37 +108,44 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 ```ts
 import { queryConnector } from '@/lib/axhub-server'
 const res = await queryConnector<{ id: number; name: string }>({
-  connector: 'my-db',          // connector 이름 (gateway.connectors.list() 의 .name) — UUID 아님, helper 가 resolve
-  path: 'public/employees',    // connector 안 리소스 경로/테이블
+  connector: 'my-db',          // connector 이름 (gateway.me.connectors() 의 .name) — UUID 아님, helper 가 resolve
   sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
   params: [true, 10],          // ✅ 항상 parameterized — SQL injection 방지
-  rowLimit: 10,                // 옵션: 결과 cap
 })
-// res.rows: 컬럼명으로 매핑된 객체 배열 · res.rowCount · res.columns · res.allowed=false 면 정책 deny (res.denyReason)
+// res.rows: 컬럼명으로 매핑된 객체 배열 · res.rowCount · res.columns
+// 정책 deny 는 in-band 플래그가 아니라 throw — try/catch 로 PermissionDeniedError 분기.
 ```
 
-#### 저수준 — 직접 스코프가 필요할 때
+> **SDK 3.x gateway 모델:** connector 에 **활성 grant** 가 있어야 **session** 을 열고, SQL 은 그 session 으로 실행해요.
+> `queryConnector()` 가 (grant 보유 connector resolve → session open → query → session close) 를 한 번에 감싸요.
+
+#### 저수준 — 직접 session 을 다룰 때
 ```ts
 import { makeGateway } from '@/lib/axhub-server'
-const gw = await makeGateway()                  // tenant UUID 로 스코프된 gateway (makeTenant 아님!)
-const connectors = await gw.connectors.list()   // 배열 반환 — .find(c => c.name === 'my-db') 로 UUID 확보
-const engines    = await gw.engines.list()      // postgres / mysql / ... + capabilities
-const res = await gw.query.run({ connectorId: connectors[0].id, path: 'schema/table', sql: 'SELECT 1' })
+const gw = await makeGateway()                       // tenant UUID 로 스코프된 gateway (makeTenant 아님!)
+const connectors = await gw.me.connectors()          // 배열 — 내가 grant 가진 connector 만. .find(c => c.name === 'my-db')
+const session = await gw.sessions.create({ connectorId: connectors[0].id })  // grant 없으면 NotFoundError
+try {
+  const res = await gw.query.run({ sessionId: session.id, sql: 'SELECT 1' })
+} finally {
+  await gw.sessions.end(session.id)                  // 끝나면 반드시 닫기
+}
 ```
-- `connectors.list()` / `resources.list()` 는 **배열** 반환 (pagination 봉투 아님).
-- `connectors.create()` / `update()` / `delete()` 는 admin ring — 평일 운영은 read-only 권장.
+- `gw.me.connectors()` / `gw.me.connectorResources(id)` / `gw.me.grants()` 는 **배열** 반환 (member-scoped — 내 grant 기준).
+- REST connector 는 `gw.invoke({ sessionId, method, path })` 로 프록시 (SQL 아님).
+- connector 등록·관리(create/update/delete)는 콘솔 관리자 작업 — SDK gateway 표면에 없어요.
 
 #### 절대 규칙 (Gateway)
-- ✅ **PostgreSQL SQL 테이블명은 스키마 포함 필수** — `path: 'schema/table'` 이면 SQL 도 `FROM schema.table`. `FROM table` 만 쓰면 `AxHubError(internal_error)` 발생. path 의 `'/'`를 `'.'`으로 바꾸면 돼요.
-- ✅ `queryConnector()` 우선 — connector 이름만 넘기면 connector UUID·tenant UUID 스코프를 helper 가 처리.
+- ✅ **PostgreSQL SQL 테이블명은 스키마 포함 필수** — `FROM schema.table`. `FROM table` 만 쓰면 `AxHubError(internal_error)` 발생.
+- ✅ `queryConnector()` 우선 — connector 이름만 넘기면 grant resolve·session 생명주기를 helper 가 처리.
 - ✅ **항상 parameterized SQL** — placeholder + `params: [...]`. 사용자 입력을 SQL 문자열에 직접 박지 마요.
-- ✅ `connector` / `path` / `sql` 은 코드 상수 — 사용자 값은 `params` 로만 (권한 우회·injection 방지).
-- ✅ `rowLimit` 명시 — 무한 결과 방지.
-- ✅ `res.allowed === false` 확인 — 정책으로 가려진 결과 (`res.denyReason`).
-- ✅ 에러 분기: `PoolStaleError` (401, 자격 만료), `PermissionDeniedError` (정책 거부), `AxHubError.code`.
+- ✅ `connector` / `sql` 은 코드 상수 — 사용자 값은 `params` 로만 (권한 우회·injection 방지).
+- ✅ 결과 cap 은 SQL `LIMIT` 로 — gateway 가 무한 결과를 막지 않아요.
+- ✅ **정책 deny 는 throw** — `try/catch` 로 `PermissionDeniedError` (정책 거부) / `UnauthenticatedError` (session 만료) / `NotFoundError` (grant 없음) 분기. in-band `res.allowed` 플래그는 더 이상 없어요.
 - ❌ `makeTenant()` (slug) 로 gateway 호출 — tenant UUID 가 아니라 **400 invalid_format**. `makeGateway()` / `queryConnector()` 만.
 - ❌ connector UUID 하드코딩 — connector 이름으로 넘기면 자동 resolve.
-- ❌ 모듈-레벨에 gateway 결과 캐싱 — 자격·데이터가 사용자별로 달라요.
+- ❌ session 을 안 닫고 방치 — 저수준 사용 시 `finally` 로 `sessions.end()`. (`queryConnector()` 는 자동.)
+- ❌ 모듈-레벨에 gateway 결과·session 캐싱 — 자격·데이터가 사용자별로 달라요.
 
 ### S7. Query DSL — `where()` / `and()` (+ 명시 요청 시 `raw()`) 만 사용
 > 데이터 API (`app.data.discover` / `app.data.table(Schema)`) 의 `list` / `count` 의 `where` 인자는 **DSL 객체** 만 받아요.
@@ -242,7 +249,7 @@ const page3 = await app.data.table(Orders).list({ ...opts, page: 3, pageSize: 50
 - DO NOT 사용자 세션 쿠키(`_hub_access`)/토큰을 응답 본문·로그에 노출.
 - DO NOT `.env.local` 커밋 (`.gitignore` 막혀있지만 force-add 도 금지).
 - DO NOT 사용자 동의 없이 destructive git (`reset --hard`, `push --force`, `branch -D`).
-- DO NOT 새 npm 패키지 사용자 확인 없이 설치 (`@ax-hub/sdk 2.x` 는 이미 들어가 있어 재설치 금지).
+- DO NOT 새 npm 패키지 사용자 확인 없이 설치 (`@ax-hub/sdk 3.x` 는 이미 들어가 있어 재설치 금지).
 - DO NOT 빌드/타입/린트 명령 사용자가 묻기 전에 실행.
 
 ## axhub-server.ts 신뢰 모델 (1-line)
@@ -288,16 +295,15 @@ try {
   else throw err
 }
 
-// 5) Gateway query — 외부 DB / SaaS connector 조회 (connector 이름으로; helper 가 tenant UUID + connector UUID resolve)
+// 5) Gateway query — 외부 DB / SaaS connector 조회 (connector 이름으로; helper 가 grant·session·UUID 처리)
 import { queryConnector } from '@/lib/axhub-server'
 const employees = await queryConnector<{ id: number; name: string }>({
-  connector: 'my-db',     // connector 이름 (UUID 아님)
-  path: 'public/employees',
+  connector: 'my-db',     // connector 이름 (UUID 아님) — 활성 grant 가 있어야 보여요
   sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수
   params: [true, 10],     // ✅ 항상 parameterized
-  rowLimit: 10,
 })
-// employees.rows (컬럼 매핑된 객체) / employees.rowCount / employees.allowed
+// employees.rows (컬럼 매핑된 객체) / employees.rowCount / employees.columns
+// 정책 deny 는 throw — try/catch 로 PermissionDeniedError 분기 (in-band allowed 플래그 없음)
 
 // 6) Query DSL — 데이터 API filter
 const filter = and(

@@ -145,14 +145,14 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *
  * 3) Gateway · 외부 DB/SaaS 조회  (connector 이름으로, parameterized SQL, audit log)
  *    import { queryConnector } from "@/lib/axhub-server";
- *    // connector 이름만 — UUID·tenant 스코프는 helper 가 자동 처리 (connectors.list() 로 resolve)
+ *    // connector 이름만 — grant·session·UUID 스코프는 helper 가 자동 처리 (me.connectors() 로 resolve)
  *    const res = await queryConnector<{ id: number; name: string }>({
- *      connector: "my-db",           // connector 이름 (UUID 아님)
- *      path: "public/employees",     // connector 안 리소스 경로
+ *      connector: "my-db",           // connector 이름 (UUID 아님) — 활성 grant 필요
  *      sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?",
  *      params: [true, 10],           // ✅ 항상 parameterized
  *    });
- *    // res.rows (컬럼 매핑된 객체) / res.rowCount / res.allowed (false 면 정책 deny)
+ *    // res.rows (컬럼 매핑된 객체) / res.rowCount / res.columns
+ *    // 정책 deny 는 throw — try/catch 로 PermissionDeniedError 분기
  *
  * 4) Query DSL · where / and  (raw SQL 금지 · or/not 은 push 불가 → ValidationError)
  *    import { where, and, defineSchema } from "@ax-hub/sdk";
