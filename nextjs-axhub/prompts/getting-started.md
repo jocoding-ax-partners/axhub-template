@@ -33,7 +33,8 @@ ConflictError / ValidationError 분기 처리. 저장 성공하면 "감사합니
 ```
 app/employees 라우트 만들어줘. lib/axhub-server.ts 의 queryConnector() 로
 const res = await queryConnector({ connector: "my-db",
-sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?", params: [true, 20] })
+sql: "SELECT id, name FROM employees WHERE active = $1 LIMIT $2", params: [true, 20] })
+(placeholder 는 postgres 네이티브 $n — '?' 는 백엔드에서 500 으로 떨어져)
 호출해서 res.rows 를 테이블로 렌더. connector 는 "이름" 으로 넘기면 helper 가 grant·session·UUID 를 자동 처리해.
 connector / sql 은 코드 상수로 (사용자 입력은 반드시 params 로). 정책 deny 는 throw 라 try/catch 로 안내.
 AxHubError 는 .code 로 분기 (PermissionDeniedError / UnauthenticatedError).

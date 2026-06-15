@@ -11,7 +11,7 @@
 //   const me  = await sdk.identity.me               // GET /api/v1/me, 사용자 자격
 //   const app = await makeApp()                     // sdk.tenant(TENANT).app(APP_SLUG)
 //   const orders = await app.data.discover('orders')
-//   const { rows } = await queryConnector({ connector: 'my-db', path: 'schema/table', sql: 'SELECT ... LIMIT ?', params: [100] })
+//   const { rows } = await queryConnector({ connector: 'my-db', path: 'schema/table', sql: 'SELECT ... LIMIT $1', params: [100] })
 //
 // 설정값은 axhub bootstrap 이 배포 시 {{...}} placeholder 를 치환해 박아요.
 // 로컬에서 직접 돌릴 땐 .env 의 APPHUB_* 가 우선해요.
@@ -98,8 +98,8 @@ export async function makeGateway(): Promise<TenantGatewayClient> {
 //
 //   const { rows } = await queryConnector<{ id: number; name: string }>({
 //     connector: 'my-db',          // connector 이름 (gateway.me.connectors() 의 .name) — UUID 아님
-//     sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수
-//     params: [true, 100],         // ✅ 항상 parameterized — 사용자 입력을 sql 문자열에 직접 박지 마요
+//     sql: 'SELECT id, name FROM public.employees WHERE active = $1 LIMIT $2',  // ⚠️ PostgreSQL: 스키마 포함 + 네이티브 $n placeholder('?' 는 백엔드에서 500)
+//     params: [true, 100],         // ✅ 항상 parameterized · $1,$2 순서대로 — 사용자 입력을 sql 문자열에 직접 박지 마요
 //   })
 //   // rows: 컬럼명으로 매핑된 객체 배열 · rowCount · columns 메타
 //   // 정책 deny 는 in-band 플래그가 아니라 throw — PermissionDeniedError(403) / 세션 만료는 UnauthenticatedError(401) 로 분기.

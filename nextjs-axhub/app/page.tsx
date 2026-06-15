@@ -148,8 +148,8 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    // connector 이름만 — grant·session·UUID 스코프는 helper 가 자동 처리 (me.connectors() 로 resolve)
  *    const res = await queryConnector<{ id: number; name: string }>({
  *      connector: "my-db",           // connector 이름 (UUID 아님) — 활성 grant 필요
- *      sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?",
- *      params: [true, 10],           // ✅ 항상 parameterized
+ *      sql: "SELECT id, name FROM employees WHERE active = $1 LIMIT $2",  // 네이티브 $n placeholder ('?' 는 500)
+ *      params: [true, 10],           // ✅ 항상 parameterized · $1,$2 순서대로
  *    });
  *    // res.rows (컬럼 매핑된 객체) / res.rowCount / res.columns
  *    // 정책 deny 는 throw — try/catch 로 PermissionDeniedError 분기

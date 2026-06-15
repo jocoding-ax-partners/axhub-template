@@ -81,8 +81,8 @@ export async function GET() {
   // connector "이름" 으로 호출 — grant·session·UUID 스코프는 queryConnector 가 알아서 처리해요.
   const res = await queryConnector<{ id: number; name: string }>({
     connector: "my-db",          // connector 이름 (gateway.me.connectors() 의 .name) — 활성 grant 필요
-    sql: "SELECT id, name FROM employees WHERE active = ? LIMIT ?",  // placeholder 는 engine 별 (mysql ?, postgres $1)
-    params: [true, 10],          // ✅ 항상 parameterized SQL (injection 방지)
+    sql: "SELECT id, name FROM employees WHERE active = $1 LIMIT $2",  // postgres 네이티브 $n placeholder — '?' 는 백엔드에서 500(internal_error)
+    params: [true, 10],          // ✅ 항상 parameterized · $1,$2 순서대로 (injection 방지)
   });
   return Response.json({ rows: res.rows, rowCount: res.rowCount });
 }

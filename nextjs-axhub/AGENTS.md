@@ -109,8 +109,8 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 import { queryConnector } from '@/lib/axhub-server'
 const res = await queryConnector<{ id: number; name: string }>({
   connector: 'my-db',          // connector 이름 (gateway.me.connectors() 의 .name) — UUID 아님, helper 가 resolve
-  sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // placeholder 는 engine 별: mysql `?`, postgres `$1`
-  params: [true, 10],          // ✅ 항상 parameterized — SQL injection 방지
+  sql: 'SELECT id, name FROM public.employees WHERE active = $1 LIMIT $2',  // postgres 네이티브 $n placeholder — '?' 는 백엔드에서 500(internal_error)
+  params: [true, 10],          // ✅ 항상 parameterized · $1,$2 순서대로 — SQL injection 방지
 })
 // res.rows: 컬럼명으로 매핑된 객체 배열 · res.rowCount · res.columns
 // 정책 deny 는 in-band 플래그가 아니라 throw — try/catch 로 PermissionDeniedError 분기.
@@ -299,8 +299,8 @@ try {
 import { queryConnector } from '@/lib/axhub-server'
 const employees = await queryConnector<{ id: number; name: string }>({
   connector: 'my-db',     // connector 이름 (UUID 아님) — 활성 grant 가 있어야 보여요
-  sql: 'SELECT id, name FROM public.employees WHERE active = ? LIMIT ?',  // ⚠️ PostgreSQL: 스키마 포함 필수
-  params: [true, 10],     // ✅ 항상 parameterized
+  sql: 'SELECT id, name FROM public.employees WHERE active = $1 LIMIT $2',  // ⚠️ PostgreSQL: 스키마 포함 + 네이티브 $n placeholder('?' 는 500)
+  params: [true, 10],     // ✅ 항상 parameterized · $1,$2 순서대로
 })
 // employees.rows (컬럼 매핑된 객체) / employees.rowCount / employees.columns
 // 정책 deny 는 throw — try/catch 로 PermissionDeniedError 분기 (in-band allowed 플래그 없음)
