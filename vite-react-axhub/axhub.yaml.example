@@ -1,49 +1,32 @@
 # axhub.yaml.example
-# 이 파일은 에이전트/사람이 axhub.yaml 을 작성할 때 보는 참고용이에요.
-# 실제 배포에는 axhub.yaml 만 사용돼요. 필요한 필드만 axhub.yaml 로 복사하세요.
-#
-# 허용 필드 전체 목록:
-# version, name
-# runtime.port, runtime.health_path
-# build.strategy, build.framework, build.install, build.build, build.start,
-# build.dockerfile, build.deploy_method, build.compose_file
-# env.required[].name/scope, env.optional[].name/scope
-# ci.commands[], ci.timeout
+# Vite는 기본적으로 정적 파일을 dist/에 생성하므로 AxHub static hosting에 바로 올릴 수 있어요.
+# 배포 시 이 파일을 axhub.yaml 로 복사해서 사용하세요.
 
-version: axhub/v1 # 권장값. 새 파일은 axhub/v1 을 사용하세요.
-name: vite-react-axhub # 표시용 label. 저장된 앱 이름을 강제하지 않아요.
-
-runtime:
-  port: 80 # 1..65535. Dockerfile EXPOSE 와 맞추세요. unset 이면 Dockerfile 또는 기본 설정으로 자동 판단.
-  health_path: / # readiness/liveness probe path. unset 이면 /.
+version: axhub/v1
+name: vite-react-axhub
 
 build:
-  strategy: auto # auto | pinned. auto 기본값.
-  # framework 는 빌드/CI 힌트예요. 대표 라벨: node, python, go, ruby, java, kotlin, rust. 자동 판단 실패 시 unknown.
-  # generated Dockerfile 기본값은 node/python/go/ruby/java/kotlin 을 알아요. rust 는 Dockerfile 또는 명시 명령을 권장해요.
-  # ci.commands 실행 이미지는 node/python/go/rust 를 직접 지원하고, ruby/java/kotlin/unknown 은 기본 shell 을 사용해요.
+  # static: Git build 결과물을 static release로 발행하고 *.axhub.page에서 서빙해요.
+  # Vite / Astro static export처럼 서버 런타임이 필요 없는 앱에 사용하세요.
+  deploy_method: static
+
+  # Vite 기본 출력 디렉토리입니다. 다른 디렉토리를 쓰면 여기를 바꾸세요.
+  static_output_dir: dist
+
+  # auto 기본값. 명시하면 탐지 실패 시에도 Node 빌드 환경을 사용해요.
+  strategy: auto
   framework: node
-  deploy_method: docker # docker | compose. unset 이면 repo 구조 또는 기본 설정으로 자동 판단.
-  dockerfile: Dockerfile # docker mode Dockerfile path. unset 이면 기본 Dockerfile 경로.
 
-  # compose mode 를 쓸 때만 사용해요. dockerfile 과 동시에 쓰지 마세요.
-  # deploy_method: compose
-  # compose_file: docker-compose.yml # default: docker-compose.yml. axhub 는 docker-compose.yml/yaml, compose.yml/yaml 도 자동 탐색.
+  # package-lock.json이 있으면 기본값도 npm ci를 실행하지만, 명시해두면 사용자가 더 이해하기 쉬워요.
+  install: npm ci
+  build: npm run build
 
-  # Dockerfile 없이 axhub 가 생성한 Dockerfile 을 쓰는 pinned mode 예시예요.
-  # 이 경우 start 는 필수이고, install/build 는 framework 기본값 대신 쓰는 override예요.
-  # strategy: pinned
-  # install: npm ci
-  # build: npm run build
-  # start: npm run preview -- --host 0.0.0.0 --port ${PORT:-80}
-
+# VITE_* 값은 브라우저 번들에 들어가므로 build scope로 주입해요.
+# 아래 값들은 AxHub가 배포 시 자동 주입할 수 있는 선택 env예요.
 env:
-  # 값은 절대 적지 마세요. 이름과 scope 계약만 적어요.
-  # required 는 배포 전 env preflight 를 통과해야 해요.
-  required: []
   optional:
     - name: VITE_APPHUB_API_URL
-      scope: build # build | runtime | both. VITE_* 는 빌드 결과물에 들어가므로 시크릿 금지.
+      scope: build
     - name: VITE_APPHUB_APP_SLUG
       scope: build
     - name: VITE_APPHUB_TENANT
@@ -51,11 +34,18 @@ env:
     - name: VITE_APPHUB_APP_ORIGIN
       scope: build
 
+# 선택: 배포 전 검증 명령. commands는 최대 10개예요.
 ci:
-  # 선택: build 전 Cloud Build CI 단계에서 실행할 명령이에요.
-  # commands 는 최대 10개예요.
-  # timeout 은 1..600초 값만 허용되는 선택 필드예요. 현재 실행 제한은 플랫폼 기본 CI timeout 을 사용해요.
-  # commands:
-  #   - npm ci
-  #   - npm run build
+  commands:
+    - npm ci
+    - npm run build
+  # timeout은 1..600초 값만 허용되는 선택 필드예요.
   # timeout: 300
+
+# Docker/K8s 런타임으로 배포하고 싶다면 static 대신 아래처럼 바꾸세요.
+# runtime:
+#   port: 80
+#   health_path: /
+# build:
+#   deploy_method: docker
+#   dockerfile: Dockerfile
