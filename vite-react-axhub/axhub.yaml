@@ -5,7 +5,7 @@ runtime:
   health_path: /
 build:
   strategy: auto
-  framework: vite
+  framework: node
   dockerfile: Dockerfile
   deploy_method: docker
 env:

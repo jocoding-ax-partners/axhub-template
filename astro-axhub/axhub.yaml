@@ -5,7 +5,7 @@ runtime:
   health_path: /healthz
 build:
   strategy: auto
-  framework: astro
+  framework: node
   dockerfile: Dockerfile
   deploy_method: docker
 env:
