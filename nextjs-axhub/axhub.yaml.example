@@ -6,9 +6,10 @@
 # version, name
 # runtime.port, runtime.health_path
 # build.strategy, build.framework, build.install, build.build, build.start,
-# build.dockerfile, build.deploy_method, build.compose_file
+# build.dockerfile, build.deploy_method, build.compose_file, build.static_output_dir
 # env.required[].name/scope, env.optional[].name/scope
 # ci.commands[], ci.timeout
+# database.engine
 
 version: axhub/v1 # 권장값. 새 파일은 axhub/v1 을 사용하세요.
 name: nextjs-axhub # 표시용 label. 저장된 앱 이름을 강제하지 않아요.
@@ -57,3 +58,8 @@ ci:
   #   - npm ci
   #   - npm run build
   # timeout: 300
+
+# database:
+#   # 선언적 DB 의존이에요. engine 을 설정하면 배포 파이프라인이 전용 DB 를 프로비저닝하고
+#   # DATABASE_URL / DIRECT_DATABASE_URL 을 자동 주입해요. 현재는 postgres 만 지원해요.
+#   engine: postgres
