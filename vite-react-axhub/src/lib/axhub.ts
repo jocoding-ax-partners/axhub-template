@@ -7,14 +7,10 @@
 // 로컬에서 템플릿을 직접 돌릴 땐 .env.local 의 VITE_APPHUB_* 가 우선해요.
 const API_BASE = import.meta.env.VITE_APPHUB_API_URL || "{{API_BASE}}";
 const APP_SLUG = import.meta.env.VITE_APPHUB_APP_SLUG || "{{APP_SLUG}}";
-const TENANT = import.meta.env.VITE_APPHUB_TENANT || "{{TENANT}}";
 const APP_ORIGIN = import.meta.env.VITE_APPHUB_APP_ORIGIN || "{{APP_ORIGIN}}";
 
 // placeholder 가 치환됐거나 env 로 채워졌으면 configured.
 const isSet = (v: string): boolean => Boolean(v) && !v.includes("{{");
-
-// 데이터 API: {API_BASE}/data/{tenant}/{app}/{table}
-const DATA_BASE = `${API_BASE}/data/${TENANT}/${APP_SLUG}`;
 
 function buildUrl(base: string, path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -62,15 +58,8 @@ export async function axhubFetch(path: string, init: RequestInit = {}): Promise<
   return request(buildUrl(API_BASE, path), init);
 }
 
-// 데이터 API 호출. resource 예: "todos" → {API_BASE}/data/{tenant}/{app}/todos
-export async function axhubData(resource: string, init: RequestInit = {}): Promise<Response> {
-  if (!isSet(API_BASE)) throw new Error("axhub API base 가 설정되지 않았어요.");
-  return request(buildUrl(DATA_BASE, resource), init);
-}
-
 export const axhub = {
   fetch: axhubFetch,
-  data: axhubData,
   slug: isSet(APP_SLUG) ? APP_SLUG : "",
   isConfigured: isSet(API_BASE) && isSet(APP_SLUG),
 };

@@ -12,7 +12,7 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
 1. **Plan first** — 다단계 작업 시작 전, 한국어로 한 줄 plan 보여줘요.
-   예: "1. `src/App.tsx` 수정 → 2. axhub.data 호출 → 3. 카드 그리드 render". 사용자 OK 후 코드.
+   예: "1. `src/App.tsx` 수정 → 2. axhub.fetch('/api/v1/me') 호출 → 3. 환영 카드 render". 사용자 OK 후 코드.
 2. **Verify-then-claim** — UI 변경 후 "되긴 해요" / "should work" / "테스트 해보세요" 만으로 끝 금지.
    정확히 어디 클릭/접속해서 무엇이 보여야 하는지 알려줘요.
    예: "http://localhost:5173 새로고침 → 카드 3개 보여야 해요. 빈 화면이면 콘솔 에러 알려주세요."
@@ -21,43 +21,29 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 4. **Honest failure** — 못 만들면 plainly 말해요. 가짜 진행/성공 보고 금지.
 5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요.
 
-## axhub 리소스 준비 — 데이터/시크릿 코드를 짜기 *전에* (에이전트 필수)
+## 인증/식별 — 로그인한 사용자 보여주기 (에이전트 필수)
 
-> 사용자는 "할 일 저장되게 / 목록 보여줘" 처럼 **결과만** 말해요.
-> axhub 가 제공하는 **동적 DB** 와 **환경변수 주입** 은 사용자가 몰라요 — 에이전트가 코드보다 먼저 처리해야 배포 후에도 동작해요.
-> axhub 플러그인이 있으면 `tables` / `env` 스킬이 미리보기+동의까지 대신 처리해요. 아래 CLI 는 그 스킬이 없을 때의 정확한 명령 형태예요.
+> 사용자는 "로그인한 사람 환영 메시지 / 내 이름 보여줘" 처럼 **결과만** 말해요.
+> 이 템플릿이 제공하는 건 **인증/식별**(누가 로그인했는지)이에요 — 별도 backend 없이 브라우저에서 바로 돼요.
 
-### R1. 저장/조회/기록 요청 → 동적 테이블부터 (코드보다 먼저)
-데이터를 담을 테이블이 backend 에 **먼저 있어야** 해요. 없으면 코드가 404/400 으로 깨져요.
-1. 확인: `axhub tables list --app <APP_SLUG> --json`
-2. 없으면 생성. **사용자마다 자기 데이터만 보는 경우(대부분) → `owner_id` 컬럼 + `--owner-column owner_id`**:
-   ```bash
-   # id · created_at · updated_at 은 자동 추가 — 선언하지 마세요. 정수는 integer 아닌 int.
-   axhub tables create todos --app <APP_SLUG> \
-     --column 'owner_id:text' --column 'title:text' --column 'done:text' \
-     --owner-column owner_id --execute --json
-   ```
-
-### R2. owner_id 격리는 backend 몫 — 코드에서 owner_id 를 만지지 마세요
-- POST insert 시 `owner_id` 를 **직접 넣지 마세요**. 로그인 사용자로 backend 가 자동 설정해요.
-- GET 은 **본인 행만** 자동 반환돼요. owner_id 필터를 직접 걸지 마세요.
-- 모두가 공유하는 공용 테이블은 owner_column 없이 만들되, 그땐 조회에 **필터가 반드시** 있어야 해요 (owner 도 필터도 없으면 400).
-
-### R3. 데이터 호출엔 로그인 세션이 필요해요 (브라우저에서 직접)
+### 로그인 사용자 정보는 `axhub.fetch('/api/v1/me')` 로 (브라우저에서 직접)
 - 이 템플릿은 **브라우저 전용 세션 fetch 헬퍼**만 사용해요. 서버용 Node SDK 를 클라이언트 번들에 넣지 마세요.
-- `axhub.data(...)` 가 `credentials:"include"` 로 로그인 세션 쿠키(`_hub_access`)를 자동 전송해요. 비로그인/만료면 401 → 헬퍼가 silent SSO 로 자동 재인증(`APP_ORIGIN` 필요). 별도 backend 불필요.
-- 데이터는 컴포넌트에서 `axhub.data()` 로 바로 호출하면 돼요:
+- `axhub.fetch(...)` 가 `credentials:"include"` 로 로그인 세션 쿠키(`_hub_access`)를 자동 전송해요. 비로그인/만료면 401 → 헬퍼가 silent SSO 로 자동 재인증(`APP_ORIGIN` 필요). 별도 backend 불필요.
   ```ts
-  const list = await (await axhub.data('todos')).json()                            // 내 행만
-  await axhub.data('todos', { method: 'POST', body: JSON.stringify({ title: '할 일', done: 'false' }) })
+  const me = await (await axhub.fetch('/api/v1/me')).json() // { user, tenants }
   ```
 
-### R4. 🔴 이 템플릿(정적 SPA)은 secret 을 담을 수 없어요
+## 데이터 — 이 템플릿(정적 SPA)은 자체 DB 가 없어요
+
+> 이 템플릿은 **정적 SPA**(브라우저 전용, 서버 프로세스 없음)예요. 서버가 없어 DB 시크릿(`DATABASE_URL`)을 쥘 수 없으니 **자체 데이터베이스가 없어요**.
+
+- "할 일 저장되게 / 목록 보여줘" 처럼 **데이터 저장/조회**가 필요하면 → **서버 템플릿(`nextjs-axhub` / `astro-axhub`)** 으로 만들어요. 거기선 표준 **Postgres**(`DATABASE_URL`)를 써요.
+- 외부 **DB/SaaS 데이터를 읽는** 거라면 → 서버 템플릿에서 axhub **gateway connector** 로 우회해요 (자격은 connector 에 보관, 앱은 정책 게이트된 조회만). 정적 SPA 에선 안전하게 못 해요.
+
+### 🔴 이 템플릿(정적 SPA)은 secret 을 담을 수 없어요
 - `VITE_*` 는 빌드 결과물(브라우저 번들)에 그대로 박혀 **누구나 봐요**. OpenAI 키 같은 secret 절대 금지 (절대 규칙에도 명시).
-- secret 으로 외부 API(OpenAI 등)를 호출해야 하면 브라우저에선 안전하게 못 해요:
-  - → **서버 템플릿(`nextjs-axhub` / `astro-axhub`)** 으로 만들어요. 거기선 `axhub env set` 으로 키를 서버에만 두고 호출해요.
-  - 외부 **DB/SaaS 데이터를 읽는** 거라면 axhub **gateway connector** 로 우회 (자격은 connector 에 보관, 앱은 정책 게이트된 조회만).
-- 환경변수 주입: `VITE_APPHUB_*` 는 axhub 가 **빌드 시 자동 주입**(scope: build)해요. 소스에 `{{...}}` 가 그대로거나 `axhub.isConfigured()` 가 false 면 미배포/미설정 상태이니, 코드를 깨지 말고 사용자에게 알려요.
+- secret 으로 외부 API(OpenAI 등)를 호출해야 하면 브라우저에선 안전하게 못 해요 → **서버 템플릿(`nextjs-axhub` / `astro-axhub`)** 으로 만들어요. 거기선 `axhub env set` 으로 키를 서버에만 두고 호출해요.
+- 환경변수 주입: `VITE_APPHUB_*` 는 axhub 가 **빌드 시 자동 주입**(scope: build)해요. 소스에 `{{...}}` 가 그대로거나 `axhub.isConfigured` 가 false 면 미배포/미설정 상태이니, 코드를 깨지 말고 사용자에게 알려요.
 
 ## Framework-Specific Rules (Vite + React, 정적 SPA)
 
@@ -75,7 +61,7 @@ Vite 7 · React 19 · TypeScript strict · Tailwind 3 · Node 20.19+ . **정적 
 
 ## axhub.ts 신뢰 모델 (1-line)
 
-이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼 = **브라우저 전용 세션 fetch 헬퍼** `axhub.fetch/data/slug/isConfigured`.
+이 (Vite + React) 템플릿은 **browser-side**. axhub 헬퍼 = **브라우저 전용 세션 fetch 헬퍼** `axhub.fetch/slug/isConfigured`. **자체 DB 없음(정적 SPA)** — 데이터가 필요하면 서버 템플릿(nextjs/astro, 표준 Postgres)을 써요.
 인증: `credentials: "include"` 로 axhub 세션 쿠키(`_hub_access`) 자동 전송 + 401 시 silent SSO 재인증. **시크릿 키 미주입.** 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포

@@ -1,20 +1,19 @@
-// axhub SDK 서버 전용 factory (Astro frontmatter / endpoint / SSR).
+// axhub SDK 서버 전용 factory (Astro frontmatter / endpoint / SSR). 인증/식별 전용.
+// 앱 데이터는 표준 PostgreSQL — src/lib/db.ts 사용.
 // 브라우저 번들에서 import 금지 — 이 파일은 사용자 요청의 _hub_access 쿠키를 SDK JWT 로 포워딩해요.
 //
 // 모델:
 //   - 요청별 새 AxHubClient 인스턴스 (모듈 레벨 싱글톤 금지: 사용자 JWT 가 섞임).
 //   - 들어온 요청의 axhub 세션 쿠키(_hub_access) 를 JWT 로 사용 → SDK 가 Authorization: Bearer 처리.
-//   - defaultTenantSlug 자동 주입 → sdk.identity / sdk.tenant(TENANT).app(APP_SLUG) 가 환경별 슬러그를 사용.
+//   - defaultTenantSlug 자동 주입 → sdk.identity / sdk.tenant(TENANT) 가 환경별 슬러그를 사용.
 //
 // 사용:
 //   const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") })
 //   const me  = await sdk.identity.me()
-//   const app = makeApp({ cookie: Astro.request.headers.get("cookie") })
-//   const todos = await table<{ id: string; title: string }>('todos', { cookie: Astro.request.headers.get("cookie") })
 //
 // 설정값은 axhub bootstrap 이 배포 시 {{...}} placeholder 를 치환해 박아요.
 // 로컬에서 직접 돌릴 땐 .env 의 APPHUB_* 가 우선해요.
-import { AxHubClient, type AppScopedClient, type TenantScopedClient } from "@ax-hub/sdk";
+import { AxHubClient, type TenantScopedClient } from "@ax-hub/sdk";
 
 const API_BASE = import.meta.env.APPHUB_API_URL ?? process.env.APPHUB_API_URL ?? "{{API_BASE}}";
 export const APP_SLUG = import.meta.env.APPHUB_APP_SLUG ?? process.env.APPHUB_APP_SLUG ?? "{{APP_SLUG}}";
@@ -58,15 +57,6 @@ export function makeAxhub(ctx: AxhubCtx = {}): AxHubClient {
 
 export function makeTenant(ctx: AxhubCtx = {}): TenantScopedClient {
   return makeAxhub(ctx).tenant(TENANT);
-}
-
-export function makeApp(ctx: AxhubCtx = {}): AppScopedClient {
-  return makeAxhub(ctx).tenant(TENANT).app(APP_SLUG);
-}
-
-export async function table<Row extends Record<string, unknown>>(name: string, ctx: AxhubCtx = {}) {
-  const app = makeApp(ctx);
-  return app.data.discover<Row>(name);
 }
 
 export const axhub = {

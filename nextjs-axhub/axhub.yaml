@@ -1,5 +1,9 @@
 version: axhub/v1
 name: nextjs-axhub
+# 전용 PostgreSQL 을 선언해요. 배포 시 axhub 가 이 앱만의 DB 를 발급하고
+# DATABASE_URL / DIRECT_DATABASE_URL 을 파드에 자동 주입해요 (lib/db.ts 가 사용).
+database:
+  engine: postgres
 runtime:
   port: 3000
   health_path: /healthz

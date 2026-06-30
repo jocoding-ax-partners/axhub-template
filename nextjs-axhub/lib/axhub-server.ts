@@ -4,19 +4,20 @@
 // 모델:
 //   - 요청별 새 AxHubClient 인스턴스 (모듈 레벨 싱글톤 금지: 사용자 JWT 가 섞임).
 //   - 들어온 요청의 axhub 세션 쿠키(_hub_access) 를 JWT 로 사용 → SDK 가 Authorization: Bearer 처리.
-//   - defaultTenantSlug 자동 주입 → sdk.apps / sdk.identity / sdk.app() 가 슬러그 자동 인지.
+//   - defaultTenantSlug 자동 주입 → sdk.apps / sdk.identity 가 슬러그 자동 인지.
+//
+// 이 파일은 axhub 의 **인증/식별**과 **외부 connector(gateway)** 호출만 담당해요.
+// 앱 자체 데이터 저장은 표준 PostgreSQL — lib/db.ts 를 쓰세요 (DATABASE_URL).
 //
 // 사용:
 //   const sdk = await makeAxhub()
 //   const me  = await sdk.identity.me               // GET /api/v1/me, 사용자 자격
-//   const app = await makeApp()                     // sdk.tenant(TENANT).app(APP_SLUG)
-//   const orders = await app.data.discover('orders')
-//   const { rows } = await queryConnector({ connector: 'my-db', path: 'schema/table', sql: 'SELECT ... LIMIT $1', params: [100] })
+//   const { rows } = await queryConnector({ connector: 'my-db', sql: 'SELECT ... LIMIT $1', params: [100] })
 //
 // 설정값은 axhub bootstrap 이 배포 시 {{...}} placeholder 를 치환해 박아요.
 // 로컬에서 직접 돌릴 땐 .env 의 APPHUB_* 가 우선해요.
 import { cookies } from 'next/headers'
-import { AxHubClient, type TenantScopedClient, type AppScopedClient, type TenantGatewayClient, type GatewayQueryResult } from '@ax-hub/sdk'
+import { AxHubClient, type TenantScopedClient, type TenantGatewayClient, type GatewayQueryResult } from '@ax-hub/sdk'
 
 const API_BASE = process.env.APPHUB_API_URL || '{{API_BASE}}'
 export const APP_SLUG = process.env.APPHUB_APP_SLUG || '{{APP_SLUG}}'
@@ -59,14 +60,6 @@ export async function makeAxhub(): Promise<AxHubClient> {
     defaultTenantSlug: TENANT,
     fetch: noStoreFetch,
   })
-}
-
-// tenant + app 스코프까지 한 줄로 잡아주는 편의 helper.
-// vibe coder 가 가장 자주 쓰는 패턴: makeApp().data.discover('todos') 식.
-// 동적 테이블 read/write 는 보통 lib/data.ts 의 table() 을 거쳐요 (owner_id 격리 컨벤션 포함).
-export async function makeApp(): Promise<AppScopedClient> {
-  const sdk = await makeAxhub()
-  return sdk.tenant(TENANT).app(APP_SLUG)
 }
 
 // tenant 만 잡힌 클라이언트가 필요할 때 (apps.list, tenants.* 등).

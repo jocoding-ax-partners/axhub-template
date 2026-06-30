@@ -20,12 +20,15 @@ app/page.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명]
 lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기.
 ```
 
-## 3. 입력 폼 + 저장 (앱 데이터)
+## 3. 입력 폼 + 저장 (앱 데이터 = 표준 Postgres)
 
 ```
-app/feedback 라우트에 피드백 입력 폼 만들어줘. Server Action 으로
-makeApp().data.discover('feedback') 의 insert 호출해서 저장.
-ConflictError / ValidationError 분기 처리. 저장 성공하면 "감사합니다" 토스트 띄워줘.
+app/feedback 라우트에 피드백 입력 폼 만들어줘. Server Action 으로 lib/db.ts 의 db() 를 써서
+Postgres 에 저장해줘. 먼저 lib/db.ts 의 ensureSchema() 에 feedback 테이블을
+(CREATE TABLE IF NOT EXISTS feedback (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ user_key text NOT NULL, message text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()))
+추가하고, insert 는 db()`INSERT INTO feedback (user_key, message) VALUES (${userKey}, ${message})`.
+userKey 는 makeAxhub() 의 sdk.identity.me() email (로컬은 'local-dev'). 저장 성공하면 "감사합니다" 표시.
 ```
 
 ## 3-A. Gateway query — 외부 DB 조회 페이지
@@ -38,15 +41,7 @@ sql: "SELECT id, name FROM employees WHERE active = $1 LIMIT $2", params: [true,
 호출해서 res.rows 를 테이블로 렌더. connector 는 "이름" 으로 넘기면 helper 가 grant·session·UUID 를 자동 처리해.
 connector / sql 은 코드 상수로 (사용자 입력은 반드시 params 로). 정책 deny 는 throw 라 try/catch 로 안내.
 AxHubError 는 .code 로 분기 (PermissionDeniedError / UnauthenticatedError).
-```
-
-## 3-B. Query DSL — 필터된 목록
-
-```
-app/orders 라우트에 결제 완료 + 금액 100 이상 주문만 보여주는 페이지.
-@ax-hub/sdk 3.x 의 defineSchema 로 Orders 스키마 잡고, where / and / or 로 filter 만들어
-makeApp().data.table(Orders).list({ where, select: ['id','total'] as const, orderBy, limit: 50 }).
-페이지네이션은 nextCursor / firstCursor 로 prev/next 버튼.
+(이 앱 자체 데이터 저장은 위 3번 — lib/db.ts Postgres. gateway 는 *외부* DB 읽기 전용.)
 ```
 
 ## 4. 디자인 폴리싱

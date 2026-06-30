@@ -10,20 +10,22 @@ src/pages/about.astro 만들어줘.
 - meta description 명시
 ```
 
-## 2. 동적 SSR 페이지
+## 2. 데이터 저장 SSR 페이지 (표준 Postgres)
 
 ```
-src/pages/users/[id].astro 만들어줘.
-- frontmatter 에서 `table<User>("users", { cookie }).list({ where: where("id").eq(Astro.params.id!), limit: 1 })` 패턴으로 SDK 호출
-- 결과 없으면 404 반환
-- 있으면 카드 형태 렌더
+src/pages/guestbook.astro 만들어줘.
+- src/lib/db.ts 의 ensureSchema() 에 guestbook 테이블(user_key, message) 추가
+- frontmatter 에서 Astro.request.method === "POST" 면 formData → db()`INSERT ...` → Astro.redirect("/guestbook") (PRG)
+- GET 이면 db()`SELECT ... WHERE user_key = ${userKey}` 로 내 글 목록 조회 후 카드 렌더
+- 로그인 사용자는 makeAxhub({ cookie }).identity.me() 로 (없으면 'local-dev')
 ```
 
 ## 3. API endpoint
 
 ```
 src/pages/api/feedback.ts 만들어줘.
-- POST: 본문 검증 후 `table("feedback", { cookie: request.headers.get("cookie") }).insert(...)` 로 저장, JSON 응답
+- POST: request.formData()(또는 JSON) 검증 후 src/lib/db.ts 의 db()`INSERT INTO feedback ...` 로 저장, JSON 응답
+  (먼저 ensureSchema() 에 feedback 테이블 추가)
 - GET: 405 Method Not Allowed
 ```
 

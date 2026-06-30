@@ -12,18 +12,20 @@ src/App.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명] 
 - Tailwind 로 깔끔하게, 모바일에서도 안 깨지게
 ```
 
-## 2. axhub 데이터 불러오는 컴포넌트
+## 2. 로그인한 사용자 정보 표시
 
 ```
-src/components/UserList.tsx 만들어줘. axhub Data plane 의 /users 리소스에서 사용자 목록을
-가져와서 카드 그리드로 보여줘. lib/axhub.ts 의 브라우저 세션 헬퍼 `axhub.data` 사용. 로딩/에러 상태도 표시.
+src/components/Welcome.tsx 만들어줘. lib/axhub.ts 의 브라우저 세션 헬퍼로
+`axhub.fetch("/api/v1/me")` 를 호출해서 로그인한 사용자 이름·이메일을 환영 카드로 보여줘.
+로딩/에러 상태도 표시.
 ```
 
-## 3. 폼 + 저장
+## 3. 데이터 저장이 필요하면 (정적 SPA 안내)
 
 ```
-src/components/FeedbackForm.tsx 만들어줘. 입력 → 제출 시 `axhub.data("feedback", { method: "POST", body })` 로
-POST. 성공하면 "감사합니다" 토스트. 실패하면 에러 메시지.
+이 템플릿은 정적 SPA 라 자체 데이터베이스가 없어요. "입력 → 저장 → 목록" 처럼 데이터를
+저장/조회해야 하는 기능은 서버 템플릿(nextjs-axhub / astro-axhub)으로 새로 만들어 주세요.
+거기선 표준 Postgres 를 써요.
 ```
 
 ## 4. 디자인 폴리싱
