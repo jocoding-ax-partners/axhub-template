@@ -1,8 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { APP_SLUG, isAxhubConfigured, makeAxhub } from "../lib/axhub-server";
+import { db, ensureSchema, isDbConfigured } from "../lib/db";
 
-// SDK 2.x identity.me 응답. 로그인한 사용자 + 활성 테넌트 멤버십.
+// SDK 3.x identity.me 응답. 로그인한 사용자 + 활성 테넌트 멤버십.
 type Me = {
   userId: string;
   email: string;
@@ -22,28 +23,65 @@ if (isAxhubConfigured()) {
 }
 const tenant = me?.tenants?.[0];
 
+// 데이터를 가를 사용자 키. 배포 시엔 로그인 사용자(email), 로컬 단독 실행 땐 'local-dev'.
+// 자기 데이터만 보이게 하려면 모든 쿼리를 이 값으로 필터하면 돼요 (아래 todo 예시 참고).
+const userKey = me?.email ?? "local-dev";
+const dbReady = isDbConfigured();
+
+// Astro 는 output:"server" SSR 이라 frontmatter 에서 POST 를 직접 처리해요 (PRG 패턴).
+// 폼 제출 → DB 쓰기 → redirect("/") 로 새로고침 후 GET 으로 목록 표시.
+if (dbReady && Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const action = form.get("action");
+  await ensureSchema();
+  if (action === "add") {
+    const title = String(form.get("title") ?? "").trim();
+    // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전.
+    if (title) await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
+  } else if (action === "toggle") {
+    const id = String(form.get("id") ?? "");
+    // 자기 행만 — user_key 로 한 번 더 가드.
+    if (id) await db()`UPDATE todos SET done = NOT done WHERE id = ${id}::bigint AND user_key = ${userKey}`;
+  }
+  return Astro.redirect("/");
+}
+
+// 내 할 일 목록 (자기 행만 — user_key 로 필터).
+let todos: { id: string; title: string; done: boolean }[] = [];
+if (dbReady) {
+  await ensureSchema();
+  todos = await db()<{ id: string; title: string; done: boolean }[]>`
+    SELECT id::text, title, done
+    FROM todos
+    WHERE user_key = ${userKey}
+    ORDER BY id DESC
+    LIMIT 50
+  `;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * 🤖 Claude Code / AI 에이전트 — 백엔드 호출 치트시트 (지우지 말 것)
  *
- * 화면을 깔끔히 하려고 아래 패턴들을 주석으로 내렸을 뿐, 이 앱에서 axhub 백엔드를
- * 쓸 때 그대로 쓰는 정식 패턴이다. 전부 서버(frontmatter)에서 호출한다.
- * Astro 는 전역 쿠키 접근이 없어서 Astro.request 의 쿠키를 ctx 로 넘긴다. SDK factory 가
- * _hub_access 를 Bearer 로 포워딩해 사용자 자격으로 호출한다. 정적 API 키 안 쓴다.
+ * 화면을 깔끔히 하려고 아래 패턴들을 주석으로 내렸을 뿐, 이 앱에서 그대로 쓰는 정식 패턴이다.
+ * 전부 서버(frontmatter / src/pages/api/*.ts)에서 호출한다.
  *
- * 1) 내 정보 · sdk.identity.me  (위 환영 메시지가 이 호출 결과)
+ * 1) 데이터 저장·조회 · 표준 PostgreSQL  (이 앱의 데이터는 전부 여기로)
+ *    import { db, ensureSchema } from "../lib/db";
+ *    await ensureSchema();                       // 첫 read/write 전에 한 번 (테이블 정의는 src/lib/db.ts 에)
+ *    // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전. 문자열 이어붙이기 금지.
+ *    await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
+ *    const rows = await db()<{ id: string; title: string }[]>`
+ *      SELECT id::text, title FROM todos WHERE user_key = ${userKey} ORDER BY id DESC LIMIT 50`;
+ *    // 새 테이블이 필요하면 src/lib/db.ts 의 ensureSchema() 에 CREATE TABLE IF NOT EXISTS 를 추가.
+ *    // 폼 쓰기는 frontmatter 에서 Astro.request.method === "POST" → formData → db() → Astro.redirect("/").
+ *    // 로컬은 `docker compose up -d` 로 Postgres 를 띄우면 돼요.
+ *
+ * 2) 로그인 사용자 · 누가 로그인했는지  (사용자별 데이터의 user_key)
  *    import { makeAxhub } from "../lib/axhub-server";
  *    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
- *    const me = await sdk.identity.me(); // { email, name, tenants[] }
- *
- * 2) 앱 데이터 · sdk.data.discover  (스키마 자동 추론)
- *    import { table } from "../lib/axhub-server";
- *    import { where } from "@ax-hub/sdk";
- *    const todos = await table<{ id: string; title: string; created_at: string }>("todos", {
- *      cookie: Astro.request.headers.get("cookie"),
- *    });
- *    // owner-scoped 테이블은 무필터 list 가 내 행만 반환 (SDK ≥2.1.2); 그 외는 where 필수 (mass-scan guard)
- *    const list = await todos.list({ where: where("created_at").gte("1970-01-01T00:00:00Z"), limit: 20 });
- *    await todos.insert({ title: "할 일" });
+ *    const me = await sdk.identity.me();          // me.email, me.name, me.tenants[]
+ *    // me.email(또는 안정적인 사용자 식별자)을 테이블의 user_key 컬럼으로 쓰고,
+ *    // 모든 쿼리를 WHERE user_key = ${me.email} 로 필터하면 사용자별 격리가 돼요.
  *
  * 원본 identity.me 응답을 그대로 보고 싶으면 /ssr 페이지 참고.
  * ───────────────────────────────────────────────────────────────────────────── */
@@ -57,7 +95,7 @@ const tenant = me?.tenants?.[0];
       <div class="tile"><span class="sheen"></span><span>ax</span></div>
       <span class="badge">vibe-coding starter</span>
       <h1>axhub <span class="accent">×</span> Astro</h1>
-      <p class="lede">백엔드 · 인증 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.</p>
+      <p class="lede">백엔드 · 인증 · 데이터베이스 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.</p>
     </header>
 
     {/* 환영 카드 — sdk.identity.me 결과 */}
@@ -88,15 +126,59 @@ const tenant = me?.tenants?.[0];
       }
     </section>
 
+    {/* 데이터 데모 — 표준 Postgres(src/lib/db.ts) 로 저장하는 사용자별 할 일 */}
+    <section class="card todo">
+      <div class="todo-head">
+        <p class="todo-title">내 할 일</p>
+        <code class="todo-tag">PostgreSQL · src/lib/db.ts</code>
+      </div>
+
+      {
+        dbReady ? (
+          <Fragment>
+            <form method="POST" class="todo-form">
+              <input type="hidden" name="action" value="add" />
+              <input name="title" placeholder="할 일을 입력하고 Enter" autocomplete="off" class="todo-input" />
+              <button type="submit" class="todo-add">추가</button>
+            </form>
+
+            <ul class="todo-list">
+              {todos.length === 0 ? (
+                <li class="todo-empty">아직 없어요 — 위에서 하나 추가해 보세요.</li>
+              ) : (
+                todos.map((t) => (
+                  <li class="todo-item">
+                    <form method="POST">
+                      <input type="hidden" name="action" value="toggle" />
+                      <input type="hidden" name="id" value={t.id} />
+                      <button type="submit" aria-label="완료 토글" class:list={["todo-check", { done: t.done }]}>
+                        {t.done ? "✓" : ""}
+                      </button>
+                    </form>
+                    <span class:list={["todo-text", { done: t.done }]}>{t.title}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </Fragment>
+        ) : (
+          <p class="todo-hint">
+            로컬 DB 가 아직 없어요. <code>docker compose up -d</code> 로 Postgres 를 띄우고{" "}
+            <code>.env</code> 에 DATABASE_URL 을 채워 주세요.
+          </p>
+        )
+      }
+    </section>
+
     {/* 다음 단계 */}
     <div class="steps">
       <div class="step"><span class="num">1</span><p class="step-t">화면 만들기</p><code>src/pages/index.astro</code></div>
-      <div class="step"><span class="num">2</span><p class="step-t">백엔드 호출</p><code>makeAxhub()</code></div>
+      <div class="step"><span class="num">2</span><p class="step-t">데이터 저장</p><code>src/lib/db.ts</code></div>
       <div class="step"><span class="num">3</span><p class="step-t">배포</p><code>/axhub:deploy</code></div>
     </div>
 
     <footer>
-      <p class="tech">Astro · Node · TypeScript</p>
+      <p class="tech">Astro · Node · TypeScript · PostgreSQL</p>
       <p class="slug">
         원본 <code>/me</code> 응답: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
         <code class="slug-code">{isAxhubConfigured() ? APP_SLUG : "(로컬 실행)"}</code>
@@ -224,6 +306,116 @@ const tenant = me?.tenants?.[0];
     font-size: 0.875rem;
     margin: 0.4rem 0 0;
   }
+  /* ── 데이터 데모 (할 일) ── */
+  .todo {
+    text-align: left;
+  }
+  .todo-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .todo-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .todo-tag {
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 0.6875rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+  }
+  .todo-form {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .todo-input {
+    flex: 1;
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .todo-input:focus {
+    border-color: var(--primary);
+  }
+  .todo-add {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .todo-add:hover {
+    background: var(--primary-hover);
+  }
+  .todo-list {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .todo-empty {
+    text-align: center;
+    color: var(--fg-subtle);
+    font-size: 0.875rem;
+    padding: 0.5rem 0;
+  }
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+  }
+  .todo-check {
+    display: grid;
+    place-items: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-default);
+    background: transparent;
+    color: #fff;
+    font-size: 0.625rem;
+    cursor: pointer;
+    padding: 0;
+  }
+  .todo-check.done {
+    border-color: var(--success);
+    background: var(--success);
+  }
+  .todo-text {
+    font-size: 0.875rem;
+  }
+  .todo-text.done {
+    color: var(--fg-subtle);
+    text-decoration: line-through;
+  }
+  .todo-hint {
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+    margin: 0;
+  }
+  .todo-hint code {
+    background: var(--primary-soft);
+    color: var(--primary);
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+  }
+
   .steps {
     width: 100%;
     display: grid;

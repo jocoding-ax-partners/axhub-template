@@ -97,7 +97,7 @@ function App() {
         {/* 다음 단계 */}
         <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
           <Step n="1" title="화면 만들기" code="src/App.tsx" />
-          <Step n="2" title="백엔드 호출" code="axhub.fetch() · axhub.data()" />
+          <Step n="2" title="백엔드 호출" code="axhub.fetch()" />
           <Step n="3" title="배포" code="/axhub:deploy" />
         </div>
 
@@ -142,9 +142,7 @@ export default App;
  *    const res = await axhub.fetch("/api/v1/me");
  *    const me = await res.json(); // { user, tenants }
  *
- * 2) 앱 데이터 · 동적 테이블 CRUD
- *    // GET  {API_BASE}/data/{tenant}/{app}/todos
- *    const list = await (await axhub.data("todos")).json();
- *    // POST 새 행 추가
- *    await axhub.data("todos", { method: "POST", body: JSON.stringify({ title: "할 일" }) });
+ * 2) 데이터 저장/조회가 필요하면?
+ *    이 템플릿은 정적 SPA 라 자체 데이터베이스가 없어요. 데이터 저장/조회가 필요하면
+ *    서버 템플릿(nextjs-axhub / astro-axhub)을 쓰세요 — 거기선 표준 Postgres 를 써요.
  * ───────────────────────────────────────────────────────────────────────────── */

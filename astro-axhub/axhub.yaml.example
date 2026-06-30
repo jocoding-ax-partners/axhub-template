@@ -5,6 +5,12 @@
 version: axhub/v1
 name: astro-axhub
 
+# 선택: 전용 데이터베이스 선언. 현재 engine 은 postgres 만 유효해요.
+# 선언하면 배포 시 axhub 가 이 앱만의 DB 를 발급하고 DATABASE_URL / DIRECT_DATABASE_URL 을
+# 파드에 자동 주입해요 (src/lib/db.ts 가 사용). 정적(static) 호스팅 앱엔 런타임이 없어 불가.
+database:
+  engine: postgres
+
 runtime:
   port: 3000
   health_path: /healthz

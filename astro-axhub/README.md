@@ -15,7 +15,8 @@ npx degit jocoding-ax-partners/axhub-template/astro-axhub my-app
 cd my-app
 npm install
 cp .env.example .env
-# .env 의 APPHUB_* 값을 채워요. (axhub 로 배포하면 자동 주입돼요)
+# .env 의 DATABASE_URL / APPHUB_* 값을 확인해요. (axhub 로 배포하면 자동 주입돼요)
+docker compose up -d   # 로컬 Postgres 띄우기 (데이터 저장용)
 npm run dev
 # http://localhost:4321 접속
 ```
@@ -26,39 +27,49 @@ npm run dev
 
 ```
 src/pages/blog.astro 만들어줘.
-- frontmatter: `makeAxhub({ cookie })` 또는 `table("posts", { cookie })` 로 SDK 3.x 호출 결과를 posts 변수로
+- frontmatter: src/lib/db.ts 의 db()`SELECT ...` 로 글 목록을 posts 변수로
 - 템플릿: posts.map 으로 카드 그리드
 - style: scoped CSS, 모바일 친화
 ```
 
-## 3. axhub Hub API 쓰기 (`@ax-hub/sdk 3.x`)
+## 3. 데이터 저장 (표준 PostgreSQL)
 
-`src/lib/axhub-server.ts` — Astro frontmatter / API endpoint 에서 import. 들어온 요청의 axhub 세션 쿠키를 SDK factory 에 넘겨 *그 사용자 자격*으로 호출해요.
+이 앱의 데이터는 이 앱 전용 **PostgreSQL** 에 저장해요 — `src/lib/db.ts` 가 단일 진입점이에요. 특별한 API 없이 평범한 SQL 을 써요.
+
+```astro
+---
+import { db, ensureSchema } from "../lib/db";
+
+// 쓰기는 frontmatter POST (Astro 는 output:"server" SSR) — PRG 패턴
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  await ensureSchema();                          // 첫 read/write 전에 한 번 (테이블 정의는 src/lib/db.ts 에)
+  // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전. 문자열 이어붙이기 금지.
+  await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${String(form.get("title"))})`;
+  return Astro.redirect("/");                    // 새로고침 후 GET 으로 목록 표시
+}
+
+await ensureSchema();
+const todos = await db()<{ id: string; title: string }[]>`
+  SELECT id::text, title FROM todos WHERE user_key = ${userKey} ORDER BY id DESC LIMIT 50`;
+---
+```
+
+- 새 테이블/컬럼이 필요하면 `src/lib/db.ts` 의 `ensureSchema()` 에 `CREATE TABLE IF NOT EXISTS ...` 한 줄을 추가해요 (별도 마이그레이션 도구 불필요).
+- **로컬**: `docker compose up -d` 로 Postgres 를 띄우고 `.env` 의 `DATABASE_URL` 사용. **배포**: `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 전용 DB 를 발급하고 `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요.
+
+누가 로그인했는지(사용자별 데이터의 `user_key`)는 `@ax-hub/sdk 3.x` 로 — `src/lib/axhub-server.ts` 가 들어온 요청의 axhub 세션 쿠키를 *그 사용자 자격*으로 포워딩해요.
 
 ```astro
 ---
 import { makeAxhub } from "../lib/axhub-server";
 const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
-const me = await sdk.identity.me();
+const me = await sdk.identity.me();              // me.email 을 user_key 로 쓰면 사용자별 격리
 ---
 <p>안녕하세요, {me.name ?? me.email} 님</p>
 ```
 
-동적 테이블은 런타임 스키마 introspection 이 들어간 `table<Row>()` 헬퍼를 쓰세요.
-
-```ts
-import { where } from "@ax-hub/sdk";
-import { table } from "../lib/axhub-server";
-const todos = await table<{ id: string; title: string; created_at: string }>("todos", {
-  cookie: Astro.request.headers.get("cookie"),
-});
-// owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환해요 (SDK ≥2.1.2).
-// non-owner-scoped 테이블은 최소 1개 where 필터가 필수예요 (mass-scan guard — 없으면 ValidationError).
-const page = await todos.list({ where: where("created_at").gte("1970-01-01T00:00:00Z"), limit: 20 });
-await todos.insert({ title: "할 일" }); // owner_id 는 backend 가 자동
-```
-
-> ⚠️ SDK helper 는 **Server-side 전용**이에요. `<script>` 태그(브라우저) 안에서 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `src/lib/axhub-server.ts` 를 직접 import 하세요.
+> ⚠️ `src/lib/db.ts` · `src/lib/axhub-server.ts` 는 **Server-side 전용**이에요. `<script>` 태그(브라우저) 안에서 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `src/lib/axhub-server.ts` 를 직접 import 하세요.
 
 ## 4. axhub 에 배포
 
@@ -82,11 +93,13 @@ axhub deploy status dep_xxxxx --watch
 
 | 변수 | 용도 |
 |------|------|
+| `DATABASE_URL` | 앱 데이터 PostgreSQL (런타임 쿼리, 풀러 경유) |
+| `DIRECT_DATABASE_URL` | 스키마 초기화/마이그레이션용 직결 세션 (로컬은 비우면 `DATABASE_URL` 폴백) |
 | `APPHUB_API_URL` | Hub API origin (`{{API_BASE}}`) |
 | `APPHUB_APP_SLUG` | 내 앱 슬러그 (`{{APP_SLUG}}`) |
 | `APPHUB_TENANT` | 내 테넌트 슬러그 (`{{TENANT}}`) |
 
-axhub 로 배포하면 위 값들은 소스의 `{{...}}` placeholder 치환으로 **자동 주입**돼요. `.env` 는 로컬 테스트용 override. **API key 는 없어요** — 인증은 들어온 요청의 세션 쿠키 포워딩으로.
+axhub 로 배포하면 위 값들은 **자동 주입**돼요 — `DATABASE_URL` / `DIRECT_DATABASE_URL` 은 `database: { engine: postgres }` 선언으로 발급되고, `APPHUB_*` 는 소스의 `{{...}}` placeholder 치환으로. `.env` 는 로컬 테스트용 override. **API key 는 없어요** — 인증은 들어온 요청의 세션 쿠키 포워딩으로.
 
 ## 6. 자주 막히는 곳
 
@@ -106,11 +119,12 @@ npx astro add react   # config 자동 수정
 
 그 후 `.astro` 안에서 `<MyReact client:load />` 로 끼워 써요.
 
-## axhub-server.ts 신뢰 모델 (이 템플릿)
+## 신뢰 모델 (이 템플릿)
 
 이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
-Hub 호출은 `@ax-hub/sdk 3.x` 의 `AxHubClient` 한 종류만 — helper 는 `makeAxhub` / `makeApp` / `makeTenant` / `table` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요.
-인증은 axhub 로그인 세션 쿠키(`_hub_access`)로: 호출 시 넘긴 `Astro.request` 쿠키를 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 써요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
+- **데이터**: `src/lib/db.ts` 의 `db()` / `ensureSchema()` — 표준 PostgreSQL. 로컬은 docker compose, 배포는 axhub 가 `DATABASE_URL` / `DIRECT_DATABASE_URL` 주입.
+- **인증/식별**: `@ax-hub/sdk 3.x` 의 `AxHubClient` — helper 는 `makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요. axhub 로그인 세션 쿠키(`_hub_access`)로 인증: 호출 시 넘긴 `Astro.request` 쿠키를 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 써요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
+
 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 8. 라이선스

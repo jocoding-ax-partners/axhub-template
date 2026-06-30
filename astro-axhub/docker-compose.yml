@@ -1,0 +1,30 @@
+# 로컬 개발용 PostgreSQL 한 개.
+#
+#   docker compose up -d      # 백그라운드로 Postgres 기동 (localhost:5432)
+#   docker compose down       # 정지 (데이터 유지)
+#   docker compose down -v     # 정지 + 데이터 삭제(초기화)
+#
+# .env 의 DATABASE_URL 이 아래 계정/포트와 맞아요:
+#   DATABASE_URL=postgres://postgres:postgres@localhost:5432/app
+#
+# 배포(axhub)에서는 이 파일을 안 써요 — axhub 가 전용 DB 를 발급하고 DATABASE_URL 을 주입해요.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
