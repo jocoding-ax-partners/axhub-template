@@ -9,8 +9,8 @@
 // 사용:
 //   const sdk = await makeAxhub()
 //   const me  = await sdk.identity.me               // GET /api/v1/me, 사용자 자격
-//   const app = await makeApp()                     // sdk.tenant(TENANT).app(APP_SLUG)
-//   const orders = await app.data.discover('orders')
+//   const app = await makeApp()                     // sdk.tenant(TENANT).app(APP_SLUG) — apps.*/tenants.* 관리 호출용
+//   // 앱 자체 데이터(raw-db) read/write 는 lib/data.ts 의 ownedTable() / query() 로 (app.data.* 는 SDK 5.0.0 에서 제거됨)
 //   const { rows } = await queryConnector({ connector: 'my-db', path: 'schema/table', sql: 'SELECT ... LIMIT $1', params: [100] })
 //
 // 설정값은 axhub bootstrap 이 배포 시 {{...}} placeholder 를 치환해 박아요.
@@ -61,9 +61,9 @@ export async function makeAxhub(): Promise<AxHubClient> {
   })
 }
 
-// tenant + app 스코프까지 한 줄로 잡아주는 편의 helper.
-// vibe coder 가 가장 자주 쓰는 패턴: makeApp().data.discover('todos') 식.
-// 동적 테이블 read/write 는 보통 lib/data.ts 의 table() 을 거쳐요 (owner_id 격리 컨벤션 포함).
+// tenant + app 스코프까지 한 줄로 잡아주는 편의 helper (apps.* / tenants.* 같은 관리 호출용).
+// 앱 자체 데이터 read/write 는 lib/data.ts 의 ownedTable() / query() (raw-db) 로 하세요 —
+// 동적테이블 app.data.* 는 SDK 5.0.0 에서 제거됐어요.
 export async function makeApp(): Promise<AppScopedClient> {
   const sdk = await makeAxhub()
   return sdk.tenant(TENANT).app(APP_SLUG)

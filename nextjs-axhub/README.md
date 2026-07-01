@@ -52,17 +52,18 @@ export async function GET() {
 ```
 
 ```ts
-// 예: 앱 데이터 CRUD — sdk.tenant().app().data 까지 helper 한 줄로
-import { where } from "@ax-hub/sdk";
-import { makeApp } from "@/lib/axhub-server";
+// 예: 앱 데이터 CRUD — 앱 자체 DB(raw-db) 에 lib/data.ts 헬퍼로
+import { currentUserId, ownedTable } from "@/lib/data";
 
-const app = await makeApp();
-const todos = await app.data.discover<{ id: string; title: string; done: boolean }>("todos");
-// owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환해요 (SDK ≥2.1.2).
-// non-owner-scoped 테이블은 최소 1개 where 필터가 필수예요 (mass-scan guard — 없으면 ValidationError).
-const page = await todos.list({ where: where("done").eq(false), limit: 20 });
-await todos.insert({ title: "할 일", done: false });
+const ownerId = await currentUserId();  // 로그인 사용자 id (me.userId)
+const todos = ownedTable<{ id: string; title: string; done: boolean }>("todos", ownerId);
+// ownedTable 의 모든 메서드는 owner_id 를 자동 필터/세팅해요 — 내 행만 안전하게 다뤄요.
+const { rows } = await todos.list({ orderBy: "created_at desc", limit: 20 }); // 내 행만
+await todos.insert({ title: "할 일", done: false });  // owner_id 자동 — 넣지 마세요
 ```
+
+> ℹ️ 앱 자체 데이터는 이제 **raw-db** (앱 전용 Postgres · `DATABASE_URL`) 로 다뤄요. 동적테이블 `app.data.*` API 는
+> `@ax-hub/sdk 5.0.0` 에서 제거됐어요. 설정·테이블 생성·격리 규칙은 아래 **3-B** 와 [`db/README.md`](./db/README.md) 참고.
 
 > ⚠️ `lib/axhub-server.ts` 는 **Server-side 전용**이에요 (`next/headers` 사용). `"use client"` 컴포넌트에서
 > import 하면 빌드가 깨져요. axhub 호출은 항상 Server Component / Route Handler / Server Action 에서.
@@ -92,40 +93,43 @@ export async function GET() {
 - `connector` / `sql` 은 코드 상수 — 사용자 입력은 반드시 `params` 로 분리 (권한 우회·injection 방지). 결과 cap 은 SQL `LIMIT`.
 - **정책 deny 는 throw** — `try/catch` 로 `PermissionDeniedError` (정책 거부) / `UnauthenticatedError` (session 만료) / `NotFoundError` (grant 없음) 분기. in-band `res.allowed` 플래그는 더 이상 없어요. (SDK 3.x: grant 기반 session 모델.)
 
-### 3-B. Query DSL — 데이터 API filter
+### 3-B. 앱 자체 데이터 — raw-db (앱 전용 Postgres)
 
-`app.data.table(...).list({ where })` 에는 `where()` / `and()` 헬퍼 조합만 넣어요.
-라이브 백엔드에 push 가능한 건 **top-level `and` + `eq/ne/gt/gte/lt/lte/in/like`** 뿐이에요 —
-`or()` / `not()` 은 push 불가라 SDK 가 `ValidationError` 로 즉시 거부해요 ("A 또는 B" 는 `in([...])` 으로,
-그 외 OR 분기는 호출을 나눠서). `list`/`count` 는 non-owner-scoped 테이블에서 최소 1개 where 가 필수예요
-(mass-scan guard) — owner-scoped 테이블(owner_column)은 무필터 호출이 내 행만 자동 반환해요 (SDK ≥2.1.2).
-LIKE 패턴은 `%` / `_` 자동 escape + ReDoS 가드 내장이라 사용자 입력 그대로 넣어도 안전.
+동적테이블 `app.data.*` API 는 `@ax-hub/sdk 5.0.0` 에서 제거됐어요. 앱 자체 데이터는 이제 **raw-db** —
+앱 전용 Postgres 에 SQL 로 직접 붙어요 (`DATABASE_URL` 로). `lib/data.ts` 헬퍼가 pool·격리·검증을 감싸요.
+
+**(a) 한 번만: 앱의 raw DB 켜기.** `axhub` 에서 이 앱의 raw DB 를 켜면(enable) 앱 전용 Postgres role 이
+만들어지고 **다음 배포 때** `DATABASE_URL` 이 자동 주입돼요. Claude Code / axhub 플러그인이 있으면 그 스킬로
+처리돼요. 관리자 API `sdk.apps.rawDb.enable(appId)` 는 **admin-ring 제어 호출**이지 앱 런타임 코드가 아니에요.
+(자세히 → [`db/README.md`](./db/README.md))
+
+**(b) 테이블은 SQL 마이그레이션으로.** DDL 은 이제 앱의 몫이에요 (`axhub tables create` 아님).
+`db/migrations/*.sql` 를 psql 로 적용해요 — `owner_id uuid not null` 컬럼 + 인덱스는 예시
+[`db/migrations/001_init.sql`](./db/migrations/001_init.sql) 참고:
+
+```bash
+psql "$DATABASE_URL" -f db/migrations/001_init.sql
+```
+
+**(c) 런타임: `ownedTable` / `query` — parameterized SQL + owner_id 격리.**
+⚠️ raw-db 는 owner_id 자동 격리가 **없어요**. 사용자-스코프 데이터는 항상 `ownedTable()` 로 —
+`list/get/insert/update/delete` 전부 `owner_id` 를 자동 필터/세팅해서 남의 행에 못 닿아요:
 
 ```ts
-import { where, and, defineSchema } from "@ax-hub/sdk";
-import { makeApp } from "@/lib/axhub-server";
+import { currentUserId, ownedTable, query } from "@/lib/data";
 
-const Orders = defineSchema({
-  table: "orders",
-  columns: {
-    id: "uuid",
-    status: { type: "enum", values: ["paid", "pending"] as const },
-    total: "number",
-  },
-});
+const ownerId = await currentUserId();
+const todos = ownedTable<{ id: string; title: string; done: boolean }>("todos", ownerId);
+const { rows } = await todos.list({ orderBy: "created_at desc", limit: 50 }); // 내 행만
+await todos.insert({ title: "할 일", done: false });  // owner_id 자동 — 넣지 마세요
+await todos.update(id, { done: true });                // 내 행일 때만
+await todos.delete(id);                                 // 내 행일 때만
 
-const app = await makeApp();
-const filter = and(
-  where(Orders.cols.status).eq("paid"),
-  where(Orders.cols.total).gt(100),
-  where("priority").in(["high", "urgent"]),   // "A 또는 B" 는 in 으로 표현해요
+// JOIN/집계 같은 커스텀 쿼리는 query() 로 — 이땐 owner_id 필터를 직접 넣는 게 호출자 책임이에요.
+const stats = await query<{ done: boolean; n: number }>(
+  "SELECT done, count(*)::int AS n FROM todos WHERE owner_id = $1 GROUP BY done",
+  [ownerId],  // ✅ 항상 parameterized $n — 사용자 입력을 SQL 문자열에 이어붙이지 마세요
 );
-const page = await app.data.table(Orders).list({
-  where: filter,
-  select: ["id", "total"] as const,   // projection — 필요한 컬럼만
-  orderBy: [{ field: "id", dir: "asc" }],
-  limit: 50,
-});
 ```
 
 ## 4. axhub 에 배포

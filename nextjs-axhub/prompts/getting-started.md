@@ -20,12 +20,14 @@ app/page.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명]
 lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기.
 ```
 
-## 3. 입력 폼 + 저장 (앱 데이터)
+## 3. 입력 폼 + 저장 (앱 데이터 · raw-db)
 
 ```
-app/feedback 라우트에 피드백 입력 폼 만들어줘. Server Action 으로
-makeApp().data.discover('feedback') 의 insert 호출해서 저장.
-ConflictError / ValidationError 분기 처리. 저장 성공하면 "감사합니다" 토스트 띄워줘.
+app/feedback 라우트에 피드백 입력 폼 만들어줘. 먼저 db/migrations 에 feedback 테이블 SQL
+(owner_id uuid not null 포함) 을 추가하고, Server Action 에서 lib/data.ts 의
+const ownerId = await currentUserId(); await ownedTable('feedback', ownerId).insert({ ... }) 로 저장.
+(ownedTable 이 owner_id 를 자동으로 넣고 필터해줘 — 내 데이터만 보여.)
+저장 성공하면 "감사합니다" 토스트 띄워줘.
 ```
 
 ## 3-A. Gateway query — 외부 DB 조회 페이지
@@ -40,13 +42,15 @@ connector / sql 은 코드 상수로 (사용자 입력은 반드시 params 로).
 AxHubError 는 .code 로 분기 (PermissionDeniedError / UnauthenticatedError).
 ```
 
-## 3-B. Query DSL — 필터된 목록
+## 3-B. 필터된 목록 — raw-db 커스텀 쿼리
 
 ```
-app/orders 라우트에 결제 완료 + 금액 100 이상 주문만 보여주는 페이지.
-@ax-hub/sdk 3.x 의 defineSchema 로 Orders 스키마 잡고, where / and / or 로 filter 만들어
-makeApp().data.table(Orders).list({ where, select: ['id','total'] as const, orderBy, limit: 50 }).
-페이지네이션은 nextCursor / firstCursor 로 prev/next 버튼.
+app/orders 라우트에 결제 완료 + 금액 100 이상 "내" 주문만 보여주는 페이지.
+먼저 db/migrations 에 orders 테이블 SQL (owner_id uuid not null 포함) 추가.
+lib/data.ts 의 query() 로 조회 — 항상 parameterized $n, owner_id 필터 필수:
+const ownerId = await currentUserId();
+const { rows } = await query("SELECT id, total FROM orders WHERE owner_id = $1 AND status = $2 AND total >= $3 ORDER BY total DESC LIMIT $4", [ownerId, "paid", 100, 50]);
+rows 를 테이블로 렌더. LIMIT/OFFSET 으로 페이지네이션.
 ```
 
 ## 4. 디자인 폴리싱

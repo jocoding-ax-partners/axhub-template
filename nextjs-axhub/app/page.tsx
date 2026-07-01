@@ -134,14 +134,14 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    const sdk = await makeAxhub();
  *    const me = await sdk.identity.me();   // me.email, me.name, me.tenants[]
  *
- * 2) 앱 데이터 · sdk.data.discover  (스키마 자동 추론)
- *    import { makeApp } from "@/lib/axhub-server";
- *    const app = await makeApp(); // sdk.tenant(TENANT).app(APP_SLUG)
- *    const todos = await app.data.discover<{ id: string; title: string; done: boolean }>("todos");
- *    // owner-scoped 테이블(owner_column)은 무필터 list 가 내 행만 자동 반환 (SDK ≥2.1.2).
- *    // non-owner-scoped 테이블은 최소 1개 where 필수 (mass-scan guard — ValidationError)
- *    const page = await todos.list({ where: where("done").eq(false), limit: 20 });
- *    await todos.insert({ title: "할 일", done: false });
+ * 2) 앱 데이터 · raw-db  (앱 자체 Postgres, DATABASE_URL 로 붙어요 · lib/data.ts)
+ *    import { currentUserId, ownedTable } from "@/lib/data";
+ *    // ⚠️ raw-db 는 owner_id 자동 격리가 없어요 — 사용자-스코프 데이터는 항상 ownedTable() 로.
+ *    //    (owner_id 필터/세팅이 모든 메서드에 박혀 있어요. 테이블은 db/migrations/*.sql 로 먼저 만들기.)
+ *    const ownerId = await currentUserId();
+ *    const todos = ownedTable<{ id: string; title: string; done: boolean }>("todos", ownerId);
+ *    const { rows } = await todos.list({ orderBy: "created_at desc", limit: 20 }); // 내 행만
+ *    await todos.insert({ title: "할 일", done: false }); // owner_id 자동 — 넣지 마세요
  *
  * 3) Gateway · 외부 DB/SaaS 조회  (connector 이름으로, parameterized SQL, audit log)
  *    import { queryConnector } from "@/lib/axhub-server";
@@ -154,19 +154,23 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    // res.rows (컬럼 매핑된 객체) / res.rowCount / res.columns
  *    // 정책 deny 는 throw — try/catch 로 PermissionDeniedError 분기
  *
- * 4) Query DSL · where / and  (raw SQL 금지 · or/not 은 push 불가 → ValidationError)
- *    import { where, and, defineSchema } from "@ax-hub/sdk";
- *    const Orders = defineSchema({ table: "orders", columns: { status: "string", total: "number" }});
- *    // push 가능: top-level and + eq/ne/gt/gte/lt/lte/in/like — "A 또는 B" 는 in([...]) 으로
- *    const filter = and(where(Orders.cols.status).eq("paid"), where("priority").in(["high", "urgent"]));
- *    const page = await app.data.table(Orders).list({ where: filter, select: ["status","total"] as const, limit: 50 });
+ * 4) raw-db · 저수준 query  (항상 parameterized $n · 사용자 입력을 SQL 에 이어붙이지 말 것)
+ *    import { query, currentUserId } from "@/lib/data";
+ *    const ownerId = await currentUserId();
+ *    // ownedTable 로 안 되는 커스텀 쿼리(JOIN/집계 등)는 query() 로 — owner_id 필터는 직접 넣어요.
+ *    const { rows } = await query<{ status: string; total: number }>(
+ *      "SELECT status, total FROM orders WHERE owner_id = $1 AND status = $2 ORDER BY total DESC LIMIT $3",
+ *      [ownerId, "paid", 50],
+ *    );
  *
- * 5) 에러 처리 · error.code 분기  (Korean message 매칭 금지)
- *    import { AxHubError, ConflictError } from "@ax-hub/sdk";
+ * 5) 에러 처리 · pg 에러  (raw-db 는 Postgres 에러 코드로 분기)
+ *    import { query } from "@/lib/data";
  *    try {
- *      await app.data.discover("todos").then(t => t.insert({ id: "t1" }));
+ *      await query("INSERT INTO todos (owner_id, id) VALUES ($1, $2)", [ownerId, "t1"]);
  *    } catch (e) {
- *      if (e instanceof ConflictError) {  // 중복 키 처리
- *      } else if (e instanceof AxHubError) console.error(e.code, e.category, e.requestId);
+ *      // pg 에러는 e.code 로 분기 — 예: '23505' unique_violation(중복 키), '23502' not_null_violation
+ *      const code = (e as { code?: string }).code;
+ *      if (code === "23505") { ...중복 키 처리... }
+ *      else throw e;
  *    }
  * ───────────────────────────────────────────────────────────────────────────── */
