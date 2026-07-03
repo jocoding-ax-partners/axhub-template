@@ -187,6 +187,11 @@ import { makeAxhub } from '@/lib/axhub-server'
 const sdk = await makeAxhub()
 const me = await sdk.identity.me()    // me.email / me.name / me.tenants[]
 
+// ── 조직 구성원 조회 (tenant_member 권한이면 가능, sdk 6.1+) ──
+const tenantId = me.tenants?.[0]?.tenantId ?? ''         // 테넌트 UUID (slug 아님)
+const org = await sdk.tenants.orgDirectory(tenantId)     // 그룹(부서)→인원 조직도 (SCIM 미러, 미가입자는 joined:false)
+const dir = await sdk.tenants.membersDirectory(tenantId) // 가입한 활성 멤버 목록 (행마다 groupId — 그룹별 필터 가능)
+
 // ── Gateway · 외부 DB/SaaS connector 조회 (connector 이름으로; helper 가 grant·session·UUID 처리) ──
 import { queryConnector } from '@/lib/axhub-server'
 const employees = await queryConnector<{ id: number; name: string }>({

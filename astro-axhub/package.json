@@ -2,7 +2,7 @@
   "name": "astro-axhub",
   "private": true,
   "version": "0.1.0",
-  "description": "axhub 위에서 바로 굴러가는 Astro 5 SSR (Node 20+) 템플릿",
+  "description": "axhub \uc704\uc5d0\uc11c \ubc14\ub85c \uad74\ub7ec\uac00\ub294 Astro 5 SSR (Node 20+) \ud15c\ud50c\ub9bf",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",
-    "@ax-hub/sdk": "^6.0.0",
+    "@ax-hub/sdk": "^6.1.0",
     "astro": "^5.1.1",
     "postgres": "^3.4.5"
   },

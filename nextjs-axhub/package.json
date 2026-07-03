@@ -2,7 +2,7 @@
   "name": "nextjs-axhub",
   "version": "0.1.0",
   "private": true,
-  "description": "axhub 위에서 바로 굴러가는 Next.js 16 + React 19 + Tailwind 템플릿",
+  "description": "axhub \uc704\uc5d0\uc11c \ubc14\ub85c \uad74\ub7ec\uac00\ub294 Next.js 16 + React 19 + Tailwind \ud15c\ud50c\ub9bf",
   "engines": {
     "node": ">=20"
   },
@@ -13,7 +13,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ax-hub/sdk": "^6.0.0",
+    "@ax-hub/sdk": "^6.1.0",
     "postgres": "^3.4.5",
     "next": "^16.0.10",
     "react": "^19.2.1",
