@@ -8,7 +8,7 @@
 
 ## Stack
 Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ ·
-**데이터는 표준 PostgreSQL** (`lib/db.ts`, `DATABASE_URL`) · **인증/식별 · 외부 connector 는 `@ax-hub/sdk 3.x`** (`lib/axhub-server.ts`).
+**데이터는 표준 PostgreSQL** (`lib/db.ts`, `DATABASE_URL`) · **인증/식별 · 외부 connector 는 `@ax-hub/sdk 6.x`** (`lib/axhub-server.ts`).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -70,7 +70,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 
 ## SDK 사용 프로토콜 (인증/식별 · 외부 connector)
 
-> 이 템플릿에서 `@ax-hub/sdk 3.x` 는 **인증/식별**과 **외부 connector(gateway)** 호출에 써요. (앱 데이터는 위 PostgreSQL.)
+> 이 템플릿에서 `@ax-hub/sdk 6.x` 는 **인증/식별**과 **외부 connector(gateway)** 호출에 써요. (앱 데이터는 위 PostgreSQL.)
 > 사용자 자격은 `lib/axhub-server.ts` 의 `makeAxhub()` factory 가 자동 처리해요. raw `fetch()` 로 `api.axhub.ai` 직접 호출 금지.
 
 ### S1. 진입점은 factory 만 — 모듈 레벨 클라이언트 금지
@@ -114,7 +114,7 @@ const res = await queryConnector<{ id: number; name: string }>({
 // 정책 deny 는 in-band 플래그가 아니라 throw — try/catch 로 PermissionDeniedError 분기.
 ```
 
-> **SDK 3.x gateway 모델:** connector 에 **활성 grant** 가 있어야 **session** 을 열고, SQL 은 그 session 으로 실행해요.
+> **SDK 6.x gateway 모델:** connector 에 **활성 grant** 가 있어야 **session** 을 열고, SQL 은 그 session 으로 실행해요.
 > `queryConnector()` 가 (grant 보유 connector resolve → session open → query → session close) 를 한 번에 감싸요.
 
 #### 저수준 — 직접 session 을 다룰 때

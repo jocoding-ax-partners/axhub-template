@@ -15,7 +15,7 @@ app/page.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명]
 ## 2. axhub Hub API 호출하는 페이지
 
 ```
-/me 라우트 만들어줘. @ax-hub/sdk 3.x 의 sdk.identity.me 를 Server Component 에서 호출해서
+/me 라우트 만들어줘. @ax-hub/sdk 6.x 의 sdk.identity.me 를 Server Component 에서 호출해서
 로그인 사용자 정보 + 소속 tenant 목록을 카드로 보여줘.
 lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기.
 ```

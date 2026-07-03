@@ -8,7 +8,7 @@
 
 ## Stack
 Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **SSR** ·
-**데이터는 표준 PostgreSQL** (`src/lib/db.ts`, `DATABASE_URL`) · **인증/식별은 `@ax-hub/sdk 3.x`** (`src/lib/axhub-server.ts`, 서버 호출 전용).
+**데이터는 표준 PostgreSQL** (`src/lib/db.ts`, `DATABASE_URL`) · **인증/식별은 `@ax-hub/sdk 6.x`** (`src/lib/axhub-server.ts`, 서버 호출 전용).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -102,7 +102,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 
 이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행).
 - **데이터**: `src/lib/db.ts` 의 `db()` / `ensureSchema()` — `DATABASE_URL`(런타임, prepare:false) · `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 주입.
-- **인증/식별**: `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 3.x` factory(`makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`). 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 씀. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
+- **인증/식별**: `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 6.x` factory(`makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`). 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 씀. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포
 
