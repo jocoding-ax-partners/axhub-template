@@ -10,7 +10,12 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "setup": "[ -f .env.local ] || cp .env.example .env.local; docker compose up -d",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:psql": "docker compose exec db psql -U postgres -d app"
   },
   "dependencies": {
     "@ax-hub/sdk": "^6.1.0",

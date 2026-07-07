@@ -25,21 +25,33 @@ export function isDbConfigured(): boolean {
 //   const rows = await db()`SELECT * FROM todos WHERE user_key = ${userKey}`
 //
 // 값은 tagged-template 으로 넘기면 자동으로 안전하게 바인딩돼요 (SQL 인젝션 방지).
+//
+// dev(`next dev`)의 핫리로드는 이 모듈을 다시 평가해요 — 모듈 레벨 변수만 쓰면 리로드마다
+// 새 커넥션 풀이 생기고 이전 풀은 안 닫혀 로컬 Postgres 커넥션이 누적돼요(too many connections).
+// 그래서 dev 에서만 globalThis 에 풀을 캐시해 핫리로드를 견뎌요. 프로덕션은 기존 경로 그대로.
+const _global = globalThis as typeof globalThis & { __axhubSql?: ReturnType<typeof postgres> }
 let _sql: ReturnType<typeof postgres> | null = null
 export function db(): ReturnType<typeof postgres> {
   if (!RUNTIME_URL) {
     throw new Error(
-      'DATABASE_URL 이 없어요. 로컬은 `docker compose up -d` 로 Postgres 를 띄운 뒤 ' +
+      'DATABASE_URL 이 없어요. 로컬은 `npm run db:up` 으로 Postgres 를 띄운 뒤 ' +
         '.env.local 에 DATABASE_URL 을 채워 주세요. axhub 로 배포하면 자동 주입돼요.',
     )
   }
   // prepare:false — 일부 연결 풀러(transaction pooling)는 prepared statement 를 지원하지 않아요.
+  if (process.env.NODE_ENV !== 'production') {
+    _global.__axhubSql ??= postgres(RUNTIME_URL, { prepare: false })
+    return _global.__axhubSql
+  }
   _sql ??= postgres(RUNTIME_URL, { prepare: false })
   return _sql
 }
 
 // 멱등 스키마 초기화. 프로세스당 한 번만 실행돼요. 데이터 read/write 전에 한 번 await 하세요.
 // 테이블을 추가/변경하려면 아래 CREATE TABLE IF NOT EXISTS 블록을 늘리면 돼요 (평범한 SQL).
+//
+// 이 promise 는 일부러 globalThis 에 캐시하지 않아요 — dev 핫리로드 때 재실행돼야
+// 여기 추가한 테이블이 서버 재시작 없이 반영돼요 (커넥션은 finally 로 닫혀 누수 없음).
 let _schema: Promise<void> | null = null
 export function ensureSchema(): Promise<void> {
   _schema ??= (async () => {
