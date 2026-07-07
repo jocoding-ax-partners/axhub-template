@@ -66,7 +66,9 @@
 ## 하지 않는 것
 
 - 로컬 사용자 시뮬레이션(`AXHUB_DEV_USER` 류), gateway 로컬 스텁 — 범위 밖 (사용자 결정).
-- astro/vite 템플릿 반영 — 후속.
+- ~~astro/vite 템플릿 반영 — 후속.~~ → 같은 날 후속 적용 완료: astro 는 전체 동일 적용
+  (스크립트·db.ts HMR·문서, `.env` 사용), vite 는 정적 SPA(DB 없음)라 `setup`(env 복사)과
+  dev 문서(HMR·dev vs nginx 정적 서빙)만 적용.
 - 런타임 코드의 그 외 변경 — 없음.
 
 ## 검증

@@ -63,7 +63,9 @@ const rows = await db()<{ id: string; title: string }[]>`
 - frontmatter · `src/pages/api/*.ts` 안에서만 (Framework-Specific 참조). `<script>` 태그(브라우저)에서 호출 금지.
 
 ### D5. 로컬은 docker, 배포는 axhub 가 주입
-- **로컬**: `docker compose up -d` 로 Postgres 를 띄우고 `.env` 의 `DATABASE_URL` 사용.
+- **로컬**: `npm run db:up` 으로 Postgres 를 띄우고 `.env` 의 `DATABASE_URL` 사용.
+  DB 조작은 npm 스크립트 우선 — `db:up` / `db:down`(데이터 유지) / `db:reset`(초기화) / `db:psql`(콘솔).
+  최초 세팅은 `npm run setup` (`.env` 없으면 예시 복사 + DB 기동).
 - **배포**: `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 이 앱 전용 DB 를 발급하고
   `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요. `isDbConfigured()` 가 false 면 아직 로컬 DB 미설정.
 
