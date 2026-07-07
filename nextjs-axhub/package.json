@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "setup": "[ -f .env.local ] || cp .env.example .env.local; docker compose up -d",
+    "setup": "node -e \"const fs=require('fs');fs.existsSync('.env.local')||fs.copyFileSync('.env.example','.env.local')\" && docker compose up -d",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d",
