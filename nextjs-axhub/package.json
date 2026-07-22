@@ -18,7 +18,7 @@
     "db:psql": "docker compose exec db psql -U postgres -d app"
   },
   "dependencies": {
-    "@ax-hub/sdk": "^6.1.0",
+    "@ax-hub/sdk": "^6.3.0",
     "postgres": "^3.4.5",
     "next": "^16.0.10",
     "react": "^19.2.1",

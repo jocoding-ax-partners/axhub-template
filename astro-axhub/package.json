@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",
-    "@ax-hub/sdk": "^6.1.0",
+    "@ax-hub/sdk": "^6.3.0",
     "astro": "^5.1.1",
     "postgres": "^3.4.5"
   },

@@ -85,6 +85,7 @@ config 는 saga 가 push 시점에 `{{API_BASE}}` / `{{APP_SLUG}}` / `{{TENANT}}
 | `@ax-hub/sdk` 2.x → `^3.0.0` (gateway grant·session 모델, `res.allowed` in-band 플래그 → throw, catalog/engines 표면 제거) | `nextjs-axhub` (gateway helper), `astro-axhub` (핀) | 백엔드 15fd5a2 DAC Phase 1 + presets surface 정합 (라이브 prod E2E 검증) |
 | `@ax-hub/sdk` 3.x → `^6.0.0` (developer-surface 정렬 — admin/콘솔/브라우저 인증 표면 제거, 85 ops) | `nextjs-axhub`, `astro-axhub` | 템플릿 사용 표면(identity.me · tenant scoping · gateway query · AxHubError)은 v6 유지 — 코드 무수정, typecheck 통과로 검증 (2026-07-03) |
 | `@ax-hub/sdk` `^6.0.0` → `^6.1.0` (tenants 조회 확장 — orgDirectory·membersDirectory 추가, 87 ops; 코드 무변경으로 install+typecheck 통과 검증 (2026-07-03)) | `nextjs-axhub`, `astro-axhub` | 템플릿 사용 표면 불변 — minor 추가만 |
+| `@ax-hub/sdk` `^6.1.0` → `^6.3.0` (backend 8714f5cd 정렬 — notifications·access-requests·gateway fileInvoke·402 `PaymentRequiredError`·deploy warnings, 97 ops; 에러 카탈로그 133) | `nextjs-axhub`, `astro-axhub` | 템플릿 사용 표면 불변(additive minor) — 코드 무변경, install+build 통과로 검증 (2026-07-22) |
 
 ## P5 Carve-out 명세
 
