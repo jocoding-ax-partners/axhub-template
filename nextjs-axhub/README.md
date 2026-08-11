@@ -82,7 +82,7 @@ npm run dev
 ## 4. 데이터 저장 (표준 PostgreSQL)
 
 이 앱의 데이터는 **이 앱 전용 PostgreSQL** 에 저장해요. `lib/db.ts` 가 단일 진입점이고, 평범한 SQL 을 쓰면 돼요.
-로컬은 `docker compose up -d`, 배포 땐 axhub 가 전용 DB 를 발급해 `DATABASE_URL` 을 자동 주입해요 (`axhub.yaml` 의 `database: { engine: postgres }`).
+로컬은 `npm run db:up`, 배포 땐 axhub 가 전용 DB 를 발급해 `DATABASE_URL` 을 자동 주입해요 (`axhub.yaml` 의 `database: { engine: postgres }`).
 
 ```ts
 // 예: Server Action / Route Handler 안에서
@@ -182,7 +182,7 @@ axhub 로 배포하면 `DATABASE_URL`/`DIRECT_DATABASE_URL`(전용 DB 발급) �
 |------|------|
 | `npm install` 실패 | Node 버전 20+ 인지 `node -v` 확인 |
 | DB 연결 실패 (`ECONNREFUSED ... 5432`) | Docker Desktop 실행 확인 후 `npm run db:up` |
-| `db:up` 이 `port is already allocated` | 5432 를 다른 Postgres 가 쓰는 중 — `docker-compose.yml` 의 ports 를 `"5433:5432"` 로 바꾸고 `.env.local` 의 DATABASE_URL 포트도 5433 으로 |
+| `db:up` 이 `port is already allocated` | 5432 를 다른 Postgres 가 쓰는 중 — `docker-compose.dev.yml` 의 ports 를 `"5433:5432"` 로 바꾸고 `.env.local` 의 DATABASE_URL 포트도 5433 으로 |
 | 테이블/데이터가 꼬임 | `npm run db:reset` — ⚠️ 로컬 데이터 전부 삭제돼요 |
 | 저장해도 화면에 반영이 안 됨 | dev 서버 끄고 `.next` 폴더 삭제 후 `npm run dev` 재시작 (§3-1) |
 | `axhub deploy` 가 "앱을 못 찾아요" | `axhub apps` 로 슬러그 다시 확인 |
