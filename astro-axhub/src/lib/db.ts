@@ -1,7 +1,7 @@
 // 표준 PostgreSQL 접근 (서버 전용 — Astro frontmatter / API endpoint). 이 앱의 데이터는 전부 여기로.
 //
 // 연결 문자열은 환경에서 와요:
-//   - 로컬: `docker compose up -d` 로 띄운 Postgres → .env 의 DATABASE_URL
+//   - 로컬: `npm run db:up` 으로 띄운 Postgres → .env 의 DATABASE_URL
 //   - 배포: axhub 가 전용 DB 를 발급하고 DATABASE_URL / DIRECT_DATABASE_URL 을 자동 주입
 //     (axhub.yaml 의 `database: { engine: postgres }` 선언이 트리거)
 //
