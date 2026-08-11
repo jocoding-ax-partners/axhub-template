@@ -145,7 +145,7 @@ axhub 로 배포하면 위 값들은 **자동 주입**돼요 — `DATABASE_URL` 
 | 증상 | 해결 |
 |------|------|
 | DB 연결 실패 (`ECONNREFUSED ... 5432`) | Docker Desktop 실행 확인 후 `npm run db:up` |
-| `db:up` 이 `port is already allocated` | 5432 를 다른 Postgres 가 쓰는 중 — `docker-compose.yml` 의 ports 를 `"5433:5432"` 로 바꾸고 `.env` 의 DATABASE_URL 포트도 5433 으로 |
+| `db:up` 이 `port is already allocated` | 5432 를 다른 Postgres 가 쓰는 중 — `docker-compose.dev.yml` 의 ports 를 `"5433:5432"` 로 바꾸고 `.env` 의 DATABASE_URL 포트도 5433 으로 |
 | 테이블/데이터가 꼬임 | `npm run db:reset` — ⚠️ 로컬 데이터 전부 삭제돼요 |
 | 저장해도 화면에 반영이 안 됨 | dev 서버 끄고 `node_modules/.vite` 삭제 후 `npm run dev` 재시작 (§3-1) |
 | 빌드 후 `entry.mjs` 가 없음 | `astro.config.ts` 에 `adapter: node({ mode: "standalone" })` 확인 |

@@ -9,11 +9,11 @@
     "preview": "astro preview",
     "start": "HOST=0.0.0.0 PORT=3000 node ./dist/server/entry.mjs",
     "astro": "astro",
-    "setup": "node -e \"const fs=require('fs');fs.existsSync('.env')||fs.copyFileSync('.env.example','.env')\" && docker compose up -d",
-    "db:up": "docker compose up -d",
-    "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d",
-    "db:psql": "docker compose exec db psql -U postgres -d app"
+    "setup": "node -e \"const fs=require('fs');fs.existsSync('.env')||fs.copyFileSync('.env.example','.env')\" && docker compose -f docker-compose.dev.yml up -d",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:reset": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d",
+    "db:psql": "docker compose -f docker-compose.dev.yml exec db psql -U postgres -d app"
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",
