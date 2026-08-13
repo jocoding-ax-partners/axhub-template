@@ -187,7 +187,7 @@ export default async function Home() {
             </>
           ) : (
             <p className="text-sm text-[var(--fg-muted)]">
-              로컬 DB 가 아직 없어요. <code className="rounded bg-[var(--primary-soft)] px-1 text-[var(--primary)]">docker compose up -d</code> 로 Postgres 를 띄우고{' '}
+              로컬 DB 가 아직 없어요. <code className="rounded bg-[var(--primary-soft)] px-1 text-[var(--primary)]">npm run db:up</code> 으로 Postgres 를 띄우고{' '}
               <code className="rounded bg-[var(--primary-soft)] px-1 text-[var(--primary)]">.env.local</code> 에 DATABASE_URL 을 채워 주세요.
             </p>
           )}
@@ -242,7 +242,7 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    const rows = await db()<{ id: string; title: string }[]>`
  *      SELECT id::text, title FROM todos WHERE user_key = ${userKey} ORDER BY id DESC LIMIT 50`;
  *    // 새 테이블이 필요하면 lib/db.ts 의 ensureSchema() 에 CREATE TABLE IF NOT EXISTS 를 추가.
- *    // 로컬은 `docker compose up -d` 로 Postgres 를 띄우면 돼요.
+ *    // 로컬은 `npm run db:up` 으로 Postgres 를 띄우면 돼요.
  *
  * 2) 사용자별 데이터 · 누가 로그인했는지  (자기 데이터만 보이게)
  *    import { makeAxhub } from "@/lib/axhub-server";
