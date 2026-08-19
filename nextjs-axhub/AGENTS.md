@@ -8,7 +8,8 @@
 
 ## Stack
 Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ ·
-**데이터는 표준 PostgreSQL** (`lib/db.ts`, `DATABASE_URL`) · **인증/식별 · 외부 connector 는 `@ax-hub/sdk 6.x`** (`lib/axhub-server.ts`).
+**데이터는 표준 PostgreSQL — 단 기본은 꺼져 있어요** (`lib/db.ts`, `DATABASE_URL` · 켜는 법은 아래 D0) ·
+**인증/식별 · 외부 connector 는 `@ax-hub/sdk 6.x`** (`lib/axhub-server.ts`).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -23,10 +24,24 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요.
    (단, `@ax-hub/sdk` 와 `postgres` 는 이미 설치돼 있으니 다시 설치 금지.)
 
-## 데이터 = 표준 PostgreSQL (`lib/db.ts`)
+## 데이터 = 표준 PostgreSQL (`lib/db.ts`) — 쓰기 전에 켜야 해요
 
 > 사용자는 "대화 저장되게 / 주문 목록 보여줘" 처럼 **결과만** 말해요. 이 앱의 데이터는 이 앱 전용
 > **PostgreSQL** 에 저장해요 — `lib/db.ts` 가 단일 진입점이에요. 평범한 SQL 을 쓰면 돼요(특별한 API 없음).
+
+### D0. ★DB 는 기본 꺼짐 — 서버 저장이 필요해지면 먼저 켠다
+템플릿 초기 상태에는 DB 선언이 없어요. 홈 데모(`app/todo-demo.tsx`)는 브라우저 `localStorage` 에만
+저장해요 — 안 쓸 DB 가 앱마다 발급되지 않게 한 거예요.
+
+**서버 저장이 필요한 요청을 받으면 `axhub.yaml` 에 두 줄을 먼저 추가**하세요 (이게 발급 트리거):
+
+```yaml
+database:
+  engine: postgres
+```
+
+이 두 줄 없이 `lib/db.ts` 를 쓰면 배포 후 `DATABASE_URL` 이 주입되지 않아 런타임에 실패해요.
+추가했으면 사용자에게 "DB 를 켰다" 고 한 줄 알리고 진행하세요.
 
 ### D1. read/write 는 `lib/db.ts` 의 `db()` 로 — 평범한 SQL
 ```ts
@@ -50,11 +65,12 @@ const rows = await db()<{ id: string; title: string }[]>`
   배포 시엔 실제 로그인 사용자, 로컬 단독 실행 땐 `'local-dev'` 로 폴백 (예: `app/page.tsx` 의 `currentUserKey()`).
 
 ### D4. 로컬은 docker, 배포는 axhub 가 주입
-- **로컬**: `npm run db:up` 으로 Postgres 를 띄우고 `.env.local` 의 `DATABASE_URL` 사용.
+- **로컬**: `npm run db:up` 으로 Postgres 를 띄우고 `.env.local` 의 `DATABASE_URL` 주석을 푸세요.
   DB 조작은 npm 스크립트 우선 — `db:up` / `db:down`(데이터 유지) / `db:reset`(초기화) / `db:psql`(콘솔).
-  최초 세팅은 `npm run setup` (`.env.local` 없으면 예시 복사 + DB 기동).
-- **배포**: `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 이 앱 전용 DB 를 발급하고
-  `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요. `isDbConfigured()` 가 false 면 아직 로컬 DB 미설정.
+  최초 세팅은 `npm run setup` (`.env.local` 없으면 예시 복사 — DB 는 자동 기동하지 않아요).
+- **배포**: D0 에서 추가한 `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 이 앱 전용
+  DB 를 발급하고 `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요. `isDbConfigured()` 가 false 면
+  아직 안 켰거나 로컬 DB 미설정.
 
 ### D5. 코드가 secret(API 키 등)을 쓰면 → axhub env 에 등록 (배포 필수)
 `.env.local` 만 채우면 **로컬만** 돌아가요. 배포 환경엔 그 값이 없어 런타임에 `env: <KEY> not found` 로 깨져요.

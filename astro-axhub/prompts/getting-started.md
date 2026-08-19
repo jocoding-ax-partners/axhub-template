@@ -12,6 +12,8 @@ src/pages/about.astro 만들어줘.
 
 ## 2. 데이터 저장 SSR 페이지 (표준 Postgres)
 
+> DB 는 기본 꺼짐이에요 — 먼저 `axhub.yaml` 에 `database: { engine: postgres }` 를 추가해 켜세요.
+
 ```
 src/pages/guestbook.astro 만들어줘.
 - src/lib/db.ts 의 ensureSchema() 에 guestbook 테이블(user_key, message) 추가

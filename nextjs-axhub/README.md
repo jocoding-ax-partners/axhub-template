@@ -18,10 +18,10 @@ cd my-app
 # 2) 의존성 설치
 npm install
 
-# 3) 로컬 DB 띄우기 + 환경변수 (Docker 필요)
-npm run setup                 # .env.local 없으면 예시 복사 + 로컬 Postgres 기동 (localhost:5432)
-# .env.local 의 DATABASE_URL 은 그대로 두면 위 Postgres 에 붙어요.
-# APPHUB_* (로그인/gateway) 는 값을 채워요. axhub 로 배포하면 둘 다 자동 주입돼요.
+# 3) 환경변수
+npm run setup                 # .env.local 없으면 예시 복사
+# APPHUB_* (로그인/gateway) 는 값을 채워요. axhub 로 배포하면 자동 주입돼요.
+# DB 는 기본으로 안 써요 — 필요하면 §4 를 보세요 (Docker 도 그때만 필요해요).
 
 # 4) 로컬 서버 띄우기
 npm run dev
@@ -49,13 +49,13 @@ npm run dev
   (Mac/Linux: `rm -rf .next` · Windows PowerShell: `Remove-Item -Recurse -Force .next`)
 - `lib/db.ts` 의 DB 커넥션 풀은 핫리로드를 견디도록 dev 에서 재사용돼요 — 오래 개발해도 커넥션이 안 새요.
 
-### 3-2. 로컬 DB 다루기
+### 3-2. 로컬 DB 다루기 (DB 를 켠 경우에만)
 
-전부 npm 스크립트로 준비돼 있어요 (내부는 docker compose):
+DB 는 기본으로 꺼져 있어요 (§4). 켜기로 했다면 전부 npm 스크립트로 준비돼 있어요 (내부는 docker compose):
 
 | 명령 | 하는 일 |
 |------|---------|
-| `npm run setup` | `.env.local` 없으면 예시 복사 + Postgres 기동 (최초 1회용) |
+| `npm run setup` | `.env.local` 없으면 예시 복사 (최초 1회용) |
 | `npm run db:up` | 로컬 Postgres 기동 (localhost:5432) |
 | `npm run db:down` | 정지 — **데이터는 유지**돼요 |
 | `npm run db:reset` | 정지 + **데이터 전부 삭제** 후 재기동 (초기화) |
@@ -79,10 +79,21 @@ npm run dev
   로컬에선 사용자 키가 `'local-dev'` 로 폴백되고, 실제 로그인/connector 조회는 배포 후 확인하세요.
 - 배포 전에 프로덕션 모드로 미리 검증하고 싶으면: `npm run build && npm start`.
 
-## 4. 데이터 저장 (표준 PostgreSQL)
+## 4. 데이터 저장 (표준 PostgreSQL) — 기본 꺼짐
 
-이 앱의 데이터는 **이 앱 전용 PostgreSQL** 에 저장해요. `lib/db.ts` 가 단일 진입점이고, 평범한 SQL 을 쓰면 돼요.
-로컬은 `npm run db:up`, 배포 땐 axhub 가 전용 DB 를 발급해 `DATABASE_URL` 을 자동 주입해요 (`axhub.yaml` 의 `database: { engine: postgres }`).
+**이 템플릿은 DB 없이 시작해요.** 홈 화면의 할 일 데모는 브라우저 `localStorage` 에만 저장하고
+(`app/todo-demo.tsx`), 서버에는 아무것도 안 남겨요. 쓰지도 않을 DB 가 앱마다 발급되지 않게 한 거예요.
+
+서버에 데이터를 남기려면 **`axhub.yaml` 에 두 줄을 추가**하세요 — 이게 발급 트리거예요:
+
+```yaml
+database:
+  engine: postgres
+```
+
+그러면 배포 시 axhub 가 이 앱 전용 PostgreSQL 을 발급하고 `DATABASE_URL` / `DIRECT_DATABASE_URL` 을
+자동 주입해요. 로컬은 `npm run db:up` 으로 띄우고 `.env.local` 의 `DATABASE_URL` 주석을 푸세요.
+헬퍼는 이미 들어 있어요 — `lib/db.ts` 가 단일 진입점이고, 평범한 SQL 을 쓰면 돼요.
 
 ```ts
 // 예: Server Action / Route Handler 안에서
@@ -168,8 +179,8 @@ axhub deploy status dep_xxxxx --watch
 
 | 변수 | 용도 |
 |------|------|
-| `DATABASE_URL` | 앱 데이터 PostgreSQL (런타임). 로컬은 docker compose, 배포는 axhub 주입 |
-| `DIRECT_DATABASE_URL` | 스키마 초기화/마이그레이션용 (직결). 로컬은 비우면 `DATABASE_URL` 로 폴백 |
+| `DATABASE_URL` | 앱 데이터 PostgreSQL (런타임). **DB 를 켠 경우만** — 로컬은 docker compose, 배포는 axhub 주입 |
+| `DIRECT_DATABASE_URL` | 스키마 초기화/마이그레이션용 (직결). **DB 를 켠 경우만** — 로컬은 비우면 `DATABASE_URL` 로 폴백 |
 | `APPHUB_API_URL` | Hub API origin (`{{API_BASE}}`) — 로그인/gateway |
 | `APPHUB_APP_SLUG` | 내 앱 슬러그 (`{{APP_SLUG}}`) |
 | `APPHUB_TENANT` | 내 테넌트 슬러그 (`{{TENANT}}`) |
@@ -202,8 +213,9 @@ axhub 로 배포하면 `DATABASE_URL`/`DIRECT_DATABASE_URL`(전용 DB 발급) �
 
 이 (Next.js) 템플릿은 **server-side**.
 
-- **데이터**: `lib/db.ts` 의 `db()` / `ensureSchema()` 가 표준 PostgreSQL 에 붙어요. `DATABASE_URL`(런타임, `prepare:false`) ·
-  `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 가 전용 DB 발급 + 주입.
+- **데이터**: 기본은 DB 없이 시작해요 (홈 데모는 `app/todo-demo.tsx` 의 localStorage). 서버 저장이 필요하면
+  `axhub.yaml` 에 `database: { engine: postgres }` 를 추가해 켜요 — 그때부터 `lib/db.ts` 의 `db()` / `ensureSchema()` 가
+  `DATABASE_URL`(런타임, `prepare:false`) · `DIRECT_DATABASE_URL`(마이그레이션) 로 붙어요.
 - **인증/식별 · gateway**: `lib/axhub-server.ts` 의 `@ax-hub/sdk 6.x` — helper `makeAxhub` / `makeTenant` / `makeGateway` /
   `queryConnector` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`. 들어온 요청의 쿠키(`next/headers` 의 `cookies()` 로 읽은
   `_hub_access`)를 JWT 로 꺼내 SDK 에 박고 SDK 가 `Authorization: Bearer` 자동 처리. 정적 API key 안 써요.

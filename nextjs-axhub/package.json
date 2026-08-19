@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "setup": "node -e \"const fs=require('fs');fs.existsSync('.env.local')||fs.copyFileSync('.env.example','.env.local')\" && docker compose -f docker-compose.dev.yml up -d",
+    "setup": "node -e \"const fs=require('fs');fs.existsSync('.env.local')||fs.copyFileSync('.env.example','.env.local')\"",
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d",

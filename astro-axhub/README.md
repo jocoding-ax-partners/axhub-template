@@ -14,8 +14,9 @@ React 컴포넌트도 island 로 끼워 쓸 수 있어요 (필요할 때 `npm i 
 npx degit jocoding-ax-partners/axhub-template/astro-axhub my-app
 cd my-app
 npm install
-npm run setup          # .env 없으면 예시 복사 + 로컬 Postgres 기동 (Docker 필요)
-# .env 의 DATABASE_URL / APPHUB_* 값을 확인해요. (axhub 로 배포하면 자동 주입돼요)
+npm run setup          # .env 없으면 예시 복사
+# .env 의 APPHUB_* 값을 확인해요. (axhub 로 배포하면 자동 주입돼요)
+# DB 는 기본으로 안 써요 — 필요하면 §4 를 보세요 (Docker 도 그때만 필요해요).
 npm run dev
 # http://localhost:4321 접속
 ```
@@ -48,7 +49,7 @@ src/pages/blog.astro 만들어줘.
 
 | 명령 | 하는 일 |
 |------|---------|
-| `npm run setup` | `.env` 없으면 예시 복사 + Postgres 기동 (최초 1회용) |
+| `npm run setup` | `.env` 없으면 예시 복사 (최초 1회용) |
 | `npm run db:up` | 로컬 Postgres 기동 (localhost:5432) |
 | `npm run db:down` | 정지 — **데이터는 유지**돼요 |
 | `npm run db:reset` | 정지 + **데이터 전부 삭제** 후 재기동 (초기화) |
@@ -71,9 +72,22 @@ src/pages/blog.astro 만들어줘.
   로컬에선 사용자 키가 `'local-dev'` 로 폴백되고, 실제 로그인은 배포 후 확인하세요.
 - 배포 전에 프로덕션 모드로 미리 검증하고 싶으면: `npm run build && npm start`.
 
-## 4. 데이터 저장 (표준 PostgreSQL)
+## 4. 데이터 저장 (표준 PostgreSQL) — 기본 꺼짐
 
-이 앱의 데이터는 이 앱 전용 **PostgreSQL** 에 저장해요 — `src/lib/db.ts` 가 단일 진입점이에요. 특별한 API 없이 평범한 SQL 을 써요.
+**이 템플릿은 DB 없이 시작해요.** 홈 화면의 할 일 데모는 브라우저 `localStorage` 에만 저장하고
+(`src/pages/index.astro` 하단 `<script>`), 서버에는 아무것도 안 남겨요. 쓰지도 않을 DB 가 앱마다
+발급되지 않게 한 거예요.
+
+서버에 데이터를 남기려면 **`axhub.yaml` 에 두 줄을 추가**하세요 — 이게 발급 트리거예요:
+
+```yaml
+database:
+  engine: postgres
+```
+
+그러면 배포 시 axhub 가 이 앱 전용 PostgreSQL 을 발급하고 `DATABASE_URL` / `DIRECT_DATABASE_URL` 을
+자동 주입해요. 로컬은 `npm run db:up` 으로 띄우고 `.env` 의 `DATABASE_URL` 주석을 푸세요.
+헬퍼는 이미 들어 있어요 — `src/lib/db.ts` 가 단일 진입점이고, 평범한 SQL 을 쓰면 돼요.
 
 ```astro
 ---
@@ -132,8 +146,8 @@ axhub deploy status dep_xxxxx --watch
 
 | 변수 | 용도 |
 |------|------|
-| `DATABASE_URL` | 앱 데이터 PostgreSQL (런타임 쿼리, 풀러 경유) |
-| `DIRECT_DATABASE_URL` | 스키마 초기화/마이그레이션용 직결 세션 (로컬은 비우면 `DATABASE_URL` 폴백) |
+| `DATABASE_URL` | 앱 데이터 PostgreSQL (런타임 쿼리, 풀러 경유). **DB 를 켠 경우만** |
+| `DIRECT_DATABASE_URL` | 스키마 초기화/마이그레이션용 직결 세션. **DB 를 켠 경우만** (로컬은 비우면 `DATABASE_URL` 폴백) |
 | `APPHUB_API_URL` | Hub API origin (`{{API_BASE}}`) |
 | `APPHUB_APP_SLUG` | 내 앱 슬러그 (`{{APP_SLUG}}`) |
 | `APPHUB_TENANT` | 내 테넌트 슬러그 (`{{TENANT}}`) |
@@ -165,7 +179,7 @@ npx astro add react   # config 자동 수정
 ## 신뢰 모델 (이 템플릿)
 
 이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
-- **데이터**: `src/lib/db.ts` 의 `db()` / `ensureSchema()` — 표준 PostgreSQL. 로컬은 docker compose, 배포는 axhub 가 `DATABASE_URL` / `DIRECT_DATABASE_URL` 주입.
+- **데이터**: 기본은 DB 없이 시작 (홈 데모는 `src/pages/index.astro` 의 localStorage). 서버 저장이 필요하면 `axhub.yaml` 에 `database: { engine: postgres }` 를 추가해 켜요 — 그때부터 `src/lib/db.ts` 의 `db()` / `ensureSchema()` 가 붙고 로컬은 docker compose, 배포는 axhub 가 `DATABASE_URL` / `DIRECT_DATABASE_URL` 주입.
 - **인증/식별**: `@ax-hub/sdk 6.x` 의 `AxHubClient` — helper 는 `makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요. axhub 로그인 세션 쿠키(`_hub_access`)로 인증: 호출 시 넘긴 `Astro.request` 쿠키를 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 써요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
 
 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
