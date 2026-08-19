@@ -1,4 +1,9 @@
-# 로컬 개발용 PostgreSQL 한 개. npm 스크립트로 쓰는 게 편해요:
+# 로컬 개발용 PostgreSQL 한 개.
+#
+# ★이 템플릿은 DB 를 기본으로 켜지 않아요 — axhub.yaml 에 `database: { engine: postgres }`
+#  를 추가해 DB 를 쓰기로 한 뒤에만 필요한 파일이에요.
+#
+# npm 스크립트로 쓰는 게 편해요:
 #
 #   npm run db:up        # 백그라운드로 Postgres 기동 (localhost:5432)
 #   npm run db:down      # 정지 (데이터 유지)

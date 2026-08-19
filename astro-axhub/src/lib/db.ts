@@ -1,4 +1,11 @@
-// 표준 PostgreSQL 접근 (서버 전용 — Astro frontmatter / API endpoint). 이 앱의 데이터는 전부 여기로.
+// 표준 PostgreSQL 접근 (서버 전용 — Astro frontmatter / API endpoint).
+//
+// ★이 템플릿은 DB 를 기본으로 켜지 않아요. 이 파일은 켤 때 바로 쓰라고 준비된
+//   헬퍼예요 — 켜기 전에는 어디서도 import 하지 않아요(홈 데모는 localStorage).
+//   켜려면 axhub.yaml 에 두 줄을 추가하세요:
+//
+//     database:
+//       engine: postgres
 //
 // 연결 문자열은 환경에서 와요:
 //   - 로컬: `docker compose up -d` 로 띄운 Postgres → .env 의 DATABASE_URL

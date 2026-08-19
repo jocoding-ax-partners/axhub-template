@@ -8,7 +8,8 @@
 
 ## Stack
 Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **SSR** ·
-**데이터는 표준 PostgreSQL** (`src/lib/db.ts`, `DATABASE_URL`) · **인증/식별은 `@ax-hub/sdk 6.x`** (`src/lib/axhub-server.ts`, 서버 호출 전용).
+**데이터는 표준 PostgreSQL — 단 기본은 꺼져 있어요** (`src/lib/db.ts`, `DATABASE_URL` · 켜는 법은 아래 D0) ·
+**인증/식별은 `@ax-hub/sdk 6.x`** (`src/lib/axhub-server.ts`, 서버 호출 전용).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
 
@@ -26,6 +27,20 @@ Astro 5 · @astrojs/node (standalone) · TypeScript · Node 20+ · **SSR** ·
 
 > 사용자는 "방명록 저장되게 / 글 목록 보여줘" 처럼 **결과만** 말해요. 이 앱의 데이터는 이 앱 전용
 > **PostgreSQL** 에 저장해요 — `src/lib/db.ts` 가 단일 진입점이에요. 평범한 SQL 을 쓰면 돼요(특별한 API 없음).
+
+### D0. ★DB 는 기본 꺼짐 — 서버 저장이 필요해지면 먼저 켠다
+템플릿 초기 상태에는 DB 선언이 없어요. 홈 데모(`src/pages/index.astro` 하단 `<script>`)는 브라우저
+`localStorage` 에만 저장해요 — 안 쓸 DB 가 앱마다 발급되지 않게 한 거예요.
+
+**서버 저장이 필요한 요청을 받으면 `axhub.yaml` 에 두 줄을 먼저 추가**하세요 (이게 발급 트리거):
+
+```yaml
+database:
+  engine: postgres
+```
+
+이 두 줄 없이 `src/lib/db.ts` 를 쓰면 배포 후 `DATABASE_URL` 이 주입되지 않아 런타임에 실패해요.
+추가했으면 사용자에게 "DB 를 켰다" 고 한 줄 알리고 진행하세요.
 
 ### D1. read/write 는 `src/lib/db.ts` 의 `db()` 로 — 평범한 SQL
 ```ts
@@ -63,11 +78,12 @@ const rows = await db()<{ id: string; title: string }[]>`
 - frontmatter · `src/pages/api/*.ts` 안에서만 (Framework-Specific 참조). `<script>` 태그(브라우저)에서 호출 금지.
 
 ### D5. 로컬은 docker, 배포는 axhub 가 주입
-- **로컬**: `npm run db:up` 으로 Postgres 를 띄우고 `.env` 의 `DATABASE_URL` 사용.
+- **로컬**: `npm run db:up` 으로 Postgres 를 띄우고 `.env` 의 `DATABASE_URL` 주석을 푸세요.
   DB 조작은 npm 스크립트 우선 — `db:up` / `db:down`(데이터 유지) / `db:reset`(초기화) / `db:psql`(콘솔).
   최초 세팅은 `npm run setup` (`.env` 없으면 예시 복사 + DB 기동).
-- **배포**: `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 이 앱 전용 DB 를 발급하고
-  `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요. `isDbConfigured()` 가 false 면 아직 로컬 DB 미설정.
+- **배포**: D0 에서 추가한 `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 이 앱 전용
+  DB 를 발급하고 `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요. `isDbConfigured()` 가 false 면
+  아직 안 켰거나 로컬 DB 미설정.
 
 ### D6. 코드가 secret(API 키 등)을 쓰면 → axhub env 에 등록 (배포 필수)
 `.env` 만 채우면 **로컬만** 돌아가요. 배포 환경엔 그 값이 없어 배포 preflight 가 막히거나 런타임에 `env: <KEY> not found` 로 깨져요.
@@ -103,7 +119,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 ## 신뢰 모델 (1-line)
 
 이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행).
-- **데이터**: `src/lib/db.ts` 의 `db()` / `ensureSchema()` — `DATABASE_URL`(런타임, prepare:false) · `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 주입.
+- **데이터**: 기본은 DB 없이 시작 (홈 데모는 localStorage). 켠 뒤에는 `src/lib/db.ts` 의 `db()` / `ensureSchema()` — `DATABASE_URL`(런타임, prepare:false) · `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 주입.
 - **인증/식별**: `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 6.x` factory(`makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`). 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 씀. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포

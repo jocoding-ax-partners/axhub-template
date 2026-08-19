@@ -22,8 +22,11 @@ lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기
 
 ## 3. 입력 폼 + 저장 (앱 데이터 = 표준 Postgres)
 
+> DB 는 기본 꺼짐이에요 — 아래 프롬프트가 `axhub.yaml` 켜기까지 같이 시켜요.
+
 ```
-app/feedback 라우트에 피드백 입력 폼 만들어줘. Server Action 으로 lib/db.ts 의 db() 를 써서
+app/feedback 라우트에 피드백 입력 폼 만들어줘. 먼저 axhub.yaml 에
+database: { engine: postgres } 를 추가해서 DB 를 켜고, Server Action 으로 lib/db.ts 의 db() 를 써서
 Postgres 에 저장해줘. 먼저 lib/db.ts 의 ensureSchema() 에 feedback 테이블을
 (CREATE TABLE IF NOT EXISTS feedback (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  user_key text NOT NULL, message text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()))

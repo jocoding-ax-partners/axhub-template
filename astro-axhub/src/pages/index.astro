@@ -1,7 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { APP_SLUG, isAxhubConfigured, makeAxhub } from "../lib/axhub-server";
-import { db, ensureSchema, isDbConfigured } from "../lib/db";
 
 // SDK 3.x identity.me 응답. 로그인한 사용자 + 활성 테넌트 멤버십.
 type Me = {
@@ -23,41 +22,6 @@ if (isAxhubConfigured()) {
 }
 const tenant = me?.tenants?.[0];
 
-// 데이터를 가를 사용자 키. 배포 시엔 로그인 사용자(email), 로컬 단독 실행 땐 'local-dev'.
-// 자기 데이터만 보이게 하려면 모든 쿼리를 이 값으로 필터하면 돼요 (아래 todo 예시 참고).
-const userKey = me?.email ?? "local-dev";
-const dbReady = isDbConfigured();
-
-// Astro 는 output:"server" SSR 이라 frontmatter 에서 POST 를 직접 처리해요 (PRG 패턴).
-// 폼 제출 → DB 쓰기 → redirect("/") 로 새로고침 후 GET 으로 목록 표시.
-if (dbReady && Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
-  const action = form.get("action");
-  await ensureSchema();
-  if (action === "add") {
-    const title = String(form.get("title") ?? "").trim();
-    // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전.
-    if (title) await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
-  } else if (action === "toggle") {
-    const id = String(form.get("id") ?? "");
-    // 자기 행만 — user_key 로 한 번 더 가드.
-    if (id) await db()`UPDATE todos SET done = NOT done WHERE id = ${id}::bigint AND user_key = ${userKey}`;
-  }
-  return Astro.redirect("/");
-}
-
-// 내 할 일 목록 (자기 행만 — user_key 로 필터).
-let todos: { id: string; title: string; done: boolean }[] = [];
-if (dbReady) {
-  await ensureSchema();
-  todos = await db()<{ id: string; title: string; done: boolean }[]>`
-    SELECT id::text, title, done
-    FROM todos
-    WHERE user_key = ${userKey}
-    ORDER BY id DESC
-    LIMIT 50
-  `;
-}
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * 🤖 Claude Code / AI 에이전트 — 백엔드 호출 치트시트 (지우지 말 것)
@@ -65,7 +29,18 @@ if (dbReady) {
  * 화면을 깔끔히 하려고 아래 패턴들을 주석으로 내렸을 뿐, 이 앱에서 그대로 쓰는 정식 패턴이다.
  * 전부 서버(frontmatter / src/pages/api/*.ts)에서 호출한다.
  *
- * 1) 데이터 저장·조회 · 표준 PostgreSQL  (이 앱의 데이터는 전부 여기로)
+ * 1) 데이터 저장·조회 · 표준 PostgreSQL  ★기본 꺼짐 — 쓰려면 먼저 켜야 해요
+ *    이 템플릿은 DB 없이 시작해요. 홈 데모는 브라우저 localStorage 에만 저장해서
+ *    기기를 옮기면 사라져요. 서버에 남기려면:
+ *
+ *      ① axhub.yaml 에 두 줄 추가 (이게 발급 트리거예요)
+ *           database:
+ *             engine: postgres
+ *      ② 로컬은 `npm run db:up` 으로 Postgres 를 띄우고 .env 에 DATABASE_URL 을 채워요.
+ *         배포하면 axhub 가 전용 DB 를 발급하고 DATABASE_URL / DIRECT_DATABASE_URL 을 자동 주입해요.
+ *      ③ 헬퍼는 이미 있어요 (src/lib/db.ts) — 아래처럼 서버에서 쓰면 돼요.
+ *         SSR(output:"server") 이라 frontmatter 에서 POST 를 직접 처리하면 됩니다 (PRG 패턴).
+ *
  *    import { db, ensureSchema } from "../lib/db";
  *    await ensureSchema();                       // 첫 read/write 전에 한 번 (테이블 정의는 src/lib/db.ts 에)
  *    // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전. 문자열 이어붙이기 금지.
@@ -126,65 +101,108 @@ if (dbReady) {
       }
     </section>
 
-    {/* 데이터 데모 — 표준 Postgres(src/lib/db.ts) 로 저장하는 사용자별 할 일 */}
+    {/* 데이터 데모 — 브라우저 localStorage 에 저장하는 할 일 (아래 <script>) */}
     <section class="card todo">
       <div class="todo-head">
         <p class="todo-title">내 할 일</p>
-        <code class="todo-tag">PostgreSQL · src/lib/db.ts</code>
+        <code class="todo-tag">localStorage · src/pages/index.astro</code>
       </div>
 
-      {
-        dbReady ? (
-          <Fragment>
-            <form method="POST" class="todo-form">
-              <input type="hidden" name="action" value="add" />
-              <input name="title" placeholder="할 일을 입력하고 Enter" autocomplete="off" class="todo-input" />
-              <button type="submit" class="todo-add">추가</button>
-            </form>
+      <form class="todo-form" id="todo-form">
+        <input name="title" placeholder="할 일을 입력하고 Enter" autocomplete="off" class="todo-input" />
+        <button type="submit" class="todo-add">추가</button>
+      </form>
 
-            <ul class="todo-list">
-              {todos.length === 0 ? (
-                <li class="todo-empty">아직 없어요 — 위에서 하나 추가해 보세요.</li>
-              ) : (
-                todos.map((t) => (
-                  <li class="todo-item">
-                    <form method="POST">
-                      <input type="hidden" name="action" value="toggle" />
-                      <input type="hidden" name="id" value={t.id} />
-                      <button type="submit" aria-label="완료 토글" class:list={["todo-check", { done: t.done }]}>
-                        {t.done ? "✓" : ""}
-                      </button>
-                    </form>
-                    <span class:list={["todo-text", { done: t.done }]}>{t.title}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </Fragment>
-        ) : (
-          <p class="todo-hint">
-            로컬 DB 가 아직 없어요. <code>docker compose up -d</code> 로 Postgres 를 띄우고{" "}
-            <code>.env</code> 에 DATABASE_URL 을 채워 주세요.
-          </p>
-        )
-      }
+      <ul class="todo-list" id="todo-list"></ul>
     </section>
 
     {/* 다음 단계 */}
     <div class="steps">
       <div class="step"><span class="num">1</span><p class="step-t">화면 만들기</p><code>src/pages/index.astro</code></div>
-      <div class="step"><span class="num">2</span><p class="step-t">데이터 저장</p><code>src/lib/db.ts</code></div>
+      <div class="step"><span class="num">2</span><p class="step-t">데이터 저장</p><code>index.astro (localStorage)</code></div>
       <div class="step"><span class="num">3</span><p class="step-t">배포</p><code>/axhub:deploy</code></div>
     </div>
 
     <footer>
-      <p class="tech">Astro · Node · TypeScript · PostgreSQL</p>
+      <p class="tech">Astro · Node · TypeScript</p>
       <p class="slug">
         원본 <code>/me</code> 응답: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
         <code class="slug-code">{isAxhubConfigured() ? APP_SLUG : "(로컬 실행)"}</code>
       </p>
     </footer>
   </main>
+
+<script>
+  // 데모용 할 일 목록 — 브라우저 localStorage 에만 저장해요 (서버 저장 없음).
+  //
+  // 서버에 남기려면 axhub.yaml 에 `database: { engine: postgres }` 를 추가해 DB 를 켜고,
+  // frontmatter 에서 src/lib/db.ts 의 db() 로 쿼리하세요 (파일 상단 치트시트 1번 참고).
+  type Todo = { id: string; title: string; done: boolean };
+
+  const STORAGE_KEY = "axhub-template-todos";
+  const form = document.getElementById("todo-form") as HTMLFormElement | null;
+  const list = document.getElementById("todo-list") as HTMLUListElement | null;
+
+  function load(): Todo[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as Todo[]) : [];
+    } catch {
+      return []; // 손상된 값은 버리고 빈 목록으로 시작
+    }
+  }
+
+  function save(todos: Todo[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+  }
+
+  function render(todos: Todo[]) {
+    if (!list) return;
+    list.textContent = "";
+    if (todos.length === 0) {
+      const li = document.createElement("li");
+      li.className = "todo-empty";
+      li.textContent = "아직 없어요 — 위에서 하나 추가해 보세요.";
+      list.append(li);
+      return;
+    }
+    for (const t of todos) {
+      const li = document.createElement("li");
+      li.className = "todo-item";
+
+      const check = document.createElement("button");
+      check.type = "button";
+      check.className = t.done ? "todo-check done" : "todo-check";
+      check.setAttribute("aria-label", "완료 토글");
+      check.textContent = t.done ? "✓" : "";
+      check.addEventListener("click", () => {
+        const next = load().map((x) => (x.id === t.id ? { ...x, done: !x.done } : x));
+        save(next);
+        render(next);
+      });
+
+      const span = document.createElement("span");
+      span.className = t.done ? "todo-text done" : "todo-text";
+      span.textContent = t.title; // textContent — 사용자 입력을 HTML 로 해석하지 않아요
+
+      li.append(check, span);
+      list.append(li);
+    }
+  }
+
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = form.elements.namedItem("title") as HTMLInputElement | null;
+    const title = input?.value.trim() ?? "";
+    if (!title) return;
+    const next = [{ id: String(Date.now()), title, done: false }, ...load()].slice(0, 50);
+    save(next);
+    render(next);
+    if (input) input.value = "";
+  });
+
+  render(load());
+</script>
 </Layout>
 
 <style>
