@@ -16,5 +16,3 @@ env:
       scope: build
     - name: VITE_APPHUB_TENANT
       scope: build
-    - name: VITE_APPHUB_APP_ORIGIN
-      scope: build

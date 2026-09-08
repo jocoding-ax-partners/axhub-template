@@ -56,6 +56,8 @@ axhub one-click bootstrap(spec 299) 정합 작업에서 결정. 상세·근거�
 
 ### 자격: 사용자 세션 JWT 통일 — 정적 API key 폐기
 
+> **2026-09-08 개정 — 신원 확인 부분은 [ADR-0002](./0002-app-host-identity-headers.md) 로 대체.** 방문자 신원은 더 이상 허브에 묻지 않고(`/api/v1/me`·silent SSO·`sdk.identity.me` 폐기) 문(게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더를 읽는다. 아래 사용자 쿠키 전달 모델은 **허브 SDK 가 꼭 필요한 호출(connector/gateway)** 에만 남고, 그것도 회사 앱 주소에서만 동작한다.
+
 3종 모두 axhub 세션 JWT(`_hub_access` 쿠키, apex 도메인 발급 → 서브도메인 공유)로 인증한다. 기존의 정적 `APPHUB_API_KEY` Bearer 모델은 **폐기** — per-user 가 아니라 axhub 의 사용자 단위 게이트 모델(spec 297/298)과 안 맞았다.
 
 - **vite-react (browser):** `credentials: "include"` 로 쿠키 자동 전송. 401 → `{{API_BASE}}/auth/silent/start?return_origin=...` silent SSO.

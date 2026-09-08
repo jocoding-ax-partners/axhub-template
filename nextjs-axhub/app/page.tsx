@@ -1,34 +1,26 @@
-import { AxHubError } from '@ax-hub/sdk'
 import { revalidatePath } from 'next/cache'
 import {
   APP_SLUG,
   isAxhubConfigured,
-  makeAxhub,
+  loginUrl,
+  logoutUrl,
+  me,
+  type AxhubMe,
 } from '@/lib/axhub-server'
 import { db, ensureSchema, isDbConfigured } from '@/lib/db'
-import type { MeResponse } from '@ax-hub/sdk'
 
-// 서버 컴포넌트에서 직접 호출 — makeAxhub() 가 들어온 _hub_access 쿠키를 JWT 로 SDK 에 박아요.
-// per-user 응답이라 cache: 'no-store' 로 매 요청 평가 (SDK 가 받는 RequestOptions 로 전달).
-async function loadMe(): Promise<MeResponse | null> {
-  if (!isAxhubConfigured()) return null
-  try {
-    const sdk = await makeAxhub()
-    return await sdk.identity.me()
-  } catch (err) {
-    // AxHubError 면 .code 로 분기 가능 (Korean message 매칭 금지).
-    if (err instanceof AxHubError) {
-      console.error('[axhub] /me failed', { code: err.code, category: err.category, requestId: err.requestId })
-    }
-    return null
-  }
+// 방문자 신원 — axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더를 me() 가 읽어요 (허브 호출 없음).
+// 로컬(미설정)이면 문이 없으니 항상 익명이에요.
+async function loadMe(): Promise<AxhubMe> {
+  return await me()
 }
 
-// 데이터를 가를 사용자 키. 배포 시엔 로그인 사용자(email), 로컬 단독 실행 땐 'local-dev'.
+// 데이터를 가를 사용자 키. 로그인 사용자는 email, 로그인 안 한 방문자는 'anonymous', 로컬 단독 실행 땐 'local-dev'.
 // 자기 데이터만 보이게 하려면 모든 쿼리를 이 값으로 필터하면 돼요 (아래 todo 예시 참고).
 async function currentUserKey(): Promise<string> {
-  const me = await loadMe()
-  return me?.email ?? 'local-dev'
+  if (!isAxhubConfigured()) return 'local-dev'
+  const m = await loadMe()
+  return m.authenticated ? m.email : 'anonymous'
 }
 
 type Todo = { id: string; title: string; done: boolean }
@@ -67,12 +59,14 @@ async function toggleTodo(formData: FormData) {
 }
 
 export default async function Home() {
-  const me = await loadMe()
-  const tenant = me?.tenants?.[0]
+  const visitor = await loadMe()
   const configured = isAxhubConfigured()
   const dbReady = isDbConfigured()
-  const userKey = me?.email ?? 'local-dev'
+  const userKey = await currentUserKey()
   const todos = dbReady ? await listTodos(userKey).catch(() => [] as Todo[]) : []
+  // 회사 앱은 앱 세션이 따로 없어 logoutUrl 이 null — 그땐 콘솔 로그아웃을 안내해요.
+  const loginHref = configured ? await loginUrl('/') : ''
+  const logoutHref = configured ? await logoutUrl('/') : null
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-[var(--bg-surface)] text-[var(--fg-default)]">
@@ -101,33 +95,50 @@ export default async function Home() {
           </p>
         </header>
 
-        {/* 환영 카드 — sdk.identity.me 결과 (서버에서 호출) */}
+        {/* 환영 카드 — me() 결과 (문이 넘긴 X-AxHub-* 헤더, 서버에서 읽음) */}
         <section className="w-full rounded-2xl border border-[var(--border-default)] bg-[var(--bg-content)] p-7 text-center shadow-sm">
-          {me ? (
+          {visitor.authenticated ? (
             <>
               <span className="relative mx-auto mb-3 flex h-2.5 w-2.5 items-center justify-center">
                 <span className="absolute h-2.5 w-2.5 animate-ping rounded-full bg-[var(--success)] opacity-60" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[var(--success)]" />
               </span>
-              <p className="text-xl font-bold tracking-[-0.01em]">환영합니다, {me.name ?? me.email}님 👋</p>
+              <p className="text-xl font-bold tracking-[-0.01em]">환영합니다, {visitor.name || visitor.email}님 👋</p>
               <p className="mt-1.5 text-sm text-[var(--fg-muted)]">
-                {me.email}
-                {tenant ? ` · ${tenant.tenantSlug} (${tenant.role})` : ''}
+                {visitor.email}
+                {visitor.tenant_slug ? ` · ${visitor.tenant_slug} (${visitor.app_role})` : ''}
               </p>
+              {logoutHref ? (
+                <a
+                  href={logoutHref}
+                  className="mt-4 inline-block rounded-lg border border-[var(--border-default)] px-3.5 py-1.5 text-sm font-semibold transition hover:border-[var(--primary)]"
+                >
+                  로그아웃
+                </a>
+              ) : (
+                <p className="mt-3 text-xs text-[var(--fg-subtle)]">회사 앱은 axhub 콘솔에서 로그아웃하면 돼요.</p>
+              )}
+            </>
+          ) : configured ? (
+            <>
+              {/* 익명은 오류가 아니라 정상 상태 — "들어올 때 로그인 요구" 가 꺼진 앱에선 누구나 여기까지 와요. */}
+              <span className="mx-auto mb-3 block h-2.5 w-2.5 rounded-full bg-[var(--fg-subtle)]" />
+              <p className="text-[15px] font-semibold text-[var(--fg-default)]">로그인하지 않았어요</p>
+              <p className="mt-1.5 text-sm text-[var(--fg-muted)]">axhub 계정으로 로그인하면 여기 이름이 표시돼요.</p>
+              <a
+                href={loginHref}
+                className="mt-4 inline-block rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)]"
+              >
+                axhub 로 로그인
+              </a>
             </>
           ) : (
             <>
               <span className="mx-auto mb-3 block h-2.5 w-2.5 rounded-full bg-[var(--warning)]" />
-              <p className="text-[15px] font-semibold text-[var(--fg-default)]">
-                {configured
-                  ? '로그인 정보를 불러오지 못했어요. axhub 로그인 상태를 확인해 주세요.'
-                  : '로컬 실행 중'}
+              <p className="text-[15px] font-semibold text-[var(--fg-default)]">로컬 실행 중</p>
+              <p className="mt-1.5 text-sm text-[var(--fg-muted)]">
+                axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.
               </p>
-              {!configured && (
-                <p className="mt-1.5 text-sm text-[var(--fg-muted)]">
-                  axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.
-                </p>
-              )}
             </>
           )}
         </section>
@@ -244,14 +255,20 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *    // 새 테이블이 필요하면 lib/db.ts 의 ensureSchema() 에 CREATE TABLE IF NOT EXISTS 를 추가.
  *    // 로컬은 `npm run db:up` 으로 Postgres 를 띄우면 돼요.
  *
- * 2) 사용자별 데이터 · 누가 로그인했는지  (자기 데이터만 보이게)
- *    import { makeAxhub } from "@/lib/axhub-server";
- *    const sdk = await makeAxhub();
- *    const me = await sdk.identity.me();          // me.email, me.name, me.tenants[]
- *    // me.email(또는 안정적인 사용자 식별자)을 테이블의 user_key 컬럼으로 쓰고,
- *    // 모든 쿼리를 WHERE user_key = ${me.email} 로 필터하면 사용자별 격리가 돼요.
+ * 2) 사용자별 데이터 · 지금 방문자가 누구인지  (자기 데이터만 보이게)
+ *    import { me, loginUrl, logoutUrl } from "@/lib/axhub-server";
+ *    const visitor = await me();
+ *    // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
+ *    // authenticated=false 는 오류가 아니라 "로그인 안 됨" 정상 상태 — 로그인 버튼(await loginUrl('/'))을 보여준다.
+ *    // 출처는 axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더 (허브 API 를 다시 부르지 않는다 —
+ *    // 퍼블릭(axhub.app)·커스텀 도메인에선 허브 쿠키가 없어 sdk.identity.me 는 401 이다).
+ *    // visitor.email(또는 user_id)을 테이블의 user_key 컬럼으로 쓰고,
+ *    // 모든 쿼리를 WHERE user_key = ${visitor.email} 로 필터하면 사용자별 격리가 돼요.
+ *    // 로그아웃: await logoutUrl('/') — 이 앱 주소의 세션만 끊는다. null 이면 회사 앱(콘솔 로그아웃 안내).
+ *    // "/__axhub/auth/*" 는 플랫폼 예약 경로 — 앱 라우트로 쓰지 않는다.
  *
  * 3) Gateway · 외부 DB/SaaS 조회  (connector 이름으로, parameterized SQL, audit log)
+ *    ⚠️ 사용자 쿠키가 필요해 **회사 앱 주소에서만** 동작 — 퍼블릭·커스텀 도메인 앱은 미지원.
  *    import { queryConnector } from "@/lib/axhub-server";
  *    // connector 이름만 — UUID·tenant 스코프는 helper 가 자동 처리 (connectors.list() 로 resolve)
  *    const res = await queryConnector<{ id: number; name: string }>({
@@ -264,6 +281,6 @@ function Step({ n, title, code }: { n: string; title: string; code: string }) {
  *
  * 4) 에러 처리
  *    - DB(lib/db.ts) 호출은 표준 postgres 에러를 던져요 — try/catch 로 감싸요.
- *    - SDK(identity/gateway) 호출은 AxHubError — e.code / e.category / e.requestId 로 분기 (메시지 매칭 금지).
+ *    - SDK(gateway) 호출은 AxHubError — e.code / e.category / e.requestId 로 분기 (메시지 매칭 금지).
  *      import { AxHubError } from "@ax-hub/sdk";
  * ───────────────────────────────────────────────────────────────────────────── */
