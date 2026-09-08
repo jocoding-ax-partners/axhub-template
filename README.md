@@ -91,11 +91,10 @@ axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placehold
 | `{{API_BASE}}` | `https://api.axhub.ai` | Hub API origin |
 | `{{APP_SLUG}}` | 내 앱 슬러그 | 앱 식별자 |
 | `{{TENANT}}` | 내 테넌트 슬러그 | data API 경로 |
-| `{{APP_ORIGIN}}` | `https://{앱}.{테넌트}...` | silent SSO return origin (브라우저) |
 
 로컬에서 직접 돌릴 땐 `.env`(server) / `.env.local`(vite, `VITE_APPHUB_*`) 로 우선 채울 수 있어요.
 
-> **인증엔 별도 API key 가 필요 없어요.** axhub 로그인 세션 쿠키(`_hub_access`)로 인증해요 — 아래 "신뢰 모델" 참고. `VITE_*` 변수는 빌드 결과물에 박히니 시크릿은 절대 넣지 마세요.
+> **인증엔 별도 API key 가 필요 없어요.** 방문자 신원은 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요 — 아래 "신뢰 모델" 참고. `VITE_*` 변수는 빌드 결과물에 박히니 시크릿은 절대 넣지 마세요.
 
 ## 기여하기
 
@@ -127,17 +126,15 @@ AI 가 무시하면 그 규칙을 다시 보여주면서 "이거 어겼다" 라�
 
 ## axhub.ts 신뢰 모델 (3종 공통)
 
-템플릿별 호출 경계가 달라졌어요. **서버 템플릿(Next/Astro)은 `@ax-hub/sdk 6.x` 를 요청마다 새로 만들고**, 브라우저 템플릿(Vite)은 Node SDK 를 번들에 넣지 않고 세션 쿠키 기반 fetch 헬퍼만 써요.
+**방문자 신원은 3종 모두 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요.** 허브 API 에 "이 사람 누구야?" 라고 다시 묻지 않아요 — 허브 로그인 쿠키는 `axhub.ai` 계열 주소에만 실리기 때문에, 퍼블릭 앱(`{앱}.axhub.app`)·커스텀 도메인에서 허브 `/api/v1/me` 나 `sdk.identity.me` 로 방문자를 알아내는 방식은 구조적으로 안 돼요. 헤더 계약·로그인/로그아웃·익명 처리 규칙은 각 템플릿 README 의 "로그인 사용자 알기 (axhub 신원 계약)" 절에 있어요. 정적 API key 는 안 써요.
 
-**자격은 3종 모두 axhub 로그인 세션 JWT(`_hub_access` 쿠키)로 통일** — 정적 API key 안 써요. 차이는 그 자격을 *어디에서 어떻게 싣느냐*뿐이에요.
+| 템플릿 | 위치 | 분류 | 신원 (`me()`) | 허브 SDK/API 직접 호출 |
+|--------|------|------|----------------|----------------|
+| nextjs-axhub | `lib/axhub-server.ts` | server | `headers()` 에서 `X-AxHub-*` 읽기 | `makeAxhub` / `makeGateway` / `queryConnector` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
+| astro-axhub | `src/lib/axhub-server.ts` | server | `Astro.request.headers` 에서 `X-AxHub-*` 읽기 | `makeAxhub` / `makeTenant` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
+| **vite-react-axhub** | `src/lib/axhub.ts` + `nginx.conf` | browser | 파드 nginx 의 `/__axhub/me` 가 헤더를 JSON 으로 되돌려 줌 → `axhub.me()` | `axhub.fetch` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
 
-| 템플릿 | 위치 | 분류 | 호출 API | 인증 transport |
-|--------|------|------|----------|----------------|
-| nextjs-axhub | `lib/axhub-server.ts` | server | `@ax-hub/sdk 6.x` (`makeAxhub` / `makeApp` / `makeTenant`) | 들어온 `_hub_access` 를 SDK JWT 로 전달 (`next/headers` `cookies()`) |
-| astro-axhub | `src/lib/axhub-server.ts` | server | `@ax-hub/sdk 6.x` (`makeAxhub` / `makeApp` / `table`) | 들어온 `_hub_access` 를 SDK JWT 로 전달 (`Astro.request` 쿠키 ctx) |
-| **vite-react-axhub** | `src/lib/axhub.ts` | browser | 브라우저 전용 세션 fetch 헬퍼 (`axhub.fetch` / `axhub.data`) | `credentials:"include"` 쿠키 자동 전송 + 401 → silent SSO 재인증 |
-
-**규칙:** 빌드 결과물엔 어떤 시크릿도 박지 않아요. 브라우저(`vite-react`)는 세션 쿠키로 직접 인증하므로 별도 backend 가 필요 없지만, 서버 전용 SDK 는 절대 클라이언트 번들에 넣지 마세요. 서버(`nextjs`/`astro`)는 진입 요청의 사용자 쿠키를 SDK factory 에 넘겨 *그 사용자 자격*으로 호출하고, 모듈 레벨 client 캐싱을 하지 않아요.
+**규칙:** 빌드 결과물엔 어떤 시크릿도 박지 않아요. 서버 전용 SDK 는 절대 클라이언트 번들에 넣지 마세요. 서버 템플릿에서 SDK 를 쓸 땐 요청별로 factory 를 새로 만들고 모듈 레벨 client 캐싱을 하지 않아요. `/__axhub/auth/*` 는 플랫폼 예약 경로라 앱 라우트로 쓸 수 없어요.
 
 ## 라이선스
 

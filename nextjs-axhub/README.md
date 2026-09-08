@@ -72,11 +72,11 @@ npm run dev
 | 실행 방식 | Turbopack 즉석 컴파일 + 핫리로드 | `next build` standalone → `node server.js` |
 | `NODE_ENV` | `development` | `production` (Dockerfile 이 고정) |
 | DB | docker compose Postgres (`.env.local`) | axhub 발급 전용 DB (`DATABASE_URL` 자동 주입) |
-| 로그인 사용자 | 없음 → `'local-dev'` 폴백 | 실제 axhub 로그인 사용자 (`me.email`) |
-| gateway (`queryConnector`) | ❌ 세션 쿠키가 없어 미동작 | ✅ 정상 동작 |
+| 로그인 사용자 | 없음(문이 없음) → `'local-dev'` 폴백 | 문이 넘긴 헤더 → `me()` (`visitor.email`) |
+| gateway (`queryConnector`) | ❌ 세션 쿠키가 없어 미동작 | ✅ **회사 앱 주소에서만** (퍼블릭·커스텀 도메인 ❌) |
 
-- 로그인·gateway 는 axhub 세션 쿠키(`_hub_access`)가 필요해서 **로컬 단독으론 동작하지 않아요.**
-  로컬에선 사용자 키가 `'local-dev'` 로 폴백되고, 실제 로그인/connector 조회는 배포 후 확인하세요.
+- 로컬엔 axhub 문이 없어 방문자가 항상 익명이에요 — 사용자 키가 `'local-dev'` 로 폴백되고, 실제 로그인은 배포 후 확인하세요.
+- gateway(connector 조회)는 사용자 세션 쿠키가 필요해서 로컬에선 안 되고, 배포해도 **회사 앱 주소에서만** 동작해요 (§4-B).
 - 배포 전에 프로덕션 모드로 미리 검증하고 싶으면: `npm run build && npm start`.
 
 ## 4. 데이터 저장 (표준 PostgreSQL)
@@ -99,25 +99,68 @@ const rows = await db()<{ id: string; title: string }[]>`
 
 > ⚠️ `lib/db.ts` · `lib/axhub-server.ts` 는 **Server-side 전용**이에요. `"use client"` 컴포넌트에서 import 하면 빌드가 깨져요.
 
-### 4-A. 로그인 사용자 · 인증 (`@ax-hub/sdk 6.x`)
+### 4-A. 로그인 사용자 알기 (axhub 신원 계약)
 
-`lib/axhub-server.ts` 의 factory 가 들어온 요청의 axhub 세션 쿠키(`_hub_access`)를 SDK 의 JWT 로 박아 *그 사용자 자격*으로 호출해요.
+axhub 에 배포된 앱은 **허브에 "이 사람 누구야?" 라고 다시 묻지 않아요.** 앱 앞의 문(ingress 게이트)이 통과시킨 요청마다 사용자 정보를 헤더로 실어 주고, 앱은 그걸 **읽기만** 해요. 회사 앱(`{앱}.{회사}.axhub.ai`) · 퍼블릭 앱(`{앱}.axhub.app`) · 커스텀 도메인 모두 같은 계약이에요.
 
-```ts
-// 예: app/api/me/route.ts
-import { makeAxhub } from "@/lib/axhub-server";
+> 왜 허브에 묻지 않나요? 허브 로그인 쿠키는 `axhub.ai` 계열 주소에만 실려요. 퍼블릭·커스텀 도메인은 다른 주소라 브라우저가 쿠키를 안 보내니, 허브 `/api/v1/me` 나 `sdk.identity.me` 로 방문자를 알아내는 방식은 **구조적으로 안 돼요.** 문이 넘기는 헤더는 주소 종류와 무관해요.
 
-export async function GET() {
-  const sdk = await makeAxhub();
-  const me = await sdk.identity.me(); // 타입 안전: me.email / me.name / me.tenants[]
-  return Response.json(me);
+### ① 문이 넘기는 헤더 (앱이 사용자를 아는 계약)
+
+| 헤더 | 값 |
+|---|---|
+| `X-AxHub-User-ID` | 사용자 UUID. **빈 문자열 = 익명 = 정상 상태** |
+| `X-AxHub-User-Email` | 이메일 — **base64(UTF-8)**, 디코드해서 써요 |
+| `X-AxHub-User-Name` | 이름 — **base64(UTF-8)**, 디코드해서 써요 |
+| `X-AxHub-App-Role` | `owner` / `platform_admin` / `tenant_admin` / `app_member` / `tenant_member` / `guest` (모르는 값은 최소 권한으로) |
+| `X-AxHub-Is-Admin` | `true` / `false` |
+| `X-AxHub-Tenant-Slug` | 앱을 소유한 워크스페이스 슬러그 |
+| `X-AxHub-Surface` | `tenant`(회사·퍼블릭·커스텀 모두) / `admin` / `public` |
+
+값은 문이 **매 요청 덮어써요** — 클라이언트가 헤더를 흉내 내도 지워져요. 그래서 앱은 검증 없이 믿고 읽으면 돼요.
+
+### 이 템플릿에서는
+
+서버는 요청 헤더를 직접 볼 수 있어요. `lib/axhub-server.ts` 의 `me()` 가 `next/headers` 의 `headers()` 에서 위 헤더를 읽어 객체로 돌려줘요. 허브 호출도, SDK 도 필요 없어요.
+
+```tsx
+// app/page.tsx (Server Component) 또는 Route Handler / Server Action
+import { me, loginUrl, logoutUrl } from "@/lib/axhub-server";
+
+export default async function Page() {
+  const visitor = await me();   // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
+  if (!visitor.authenticated) return <a href={await loginUrl("/")}>axhub 로 로그인</a>;   // 익명 = 정상 상태
+  const logout = await logoutUrl("/");                                                      // 회사 앱이면 null
+  return <p>환영합니다, {visitor.name || visitor.email}님 {logout ? <a href={logout}>로그아웃</a> : "(콘솔에서 로그아웃)"}</p>;
 }
 ```
 
-> 모듈 레벨에 `AxHubClient` 캐싱 금지 — 요청별로 `makeAxhub()` 새로 호출해야 사용자 자격이 안 섞여요.
-> `me.email` 을 데이터 테이블의 `user_key` 로 쓰면 사용자별 격리가 돼요.
+> `visitor.email`(또는 `user_id`)을 데이터 테이블의 `user_key` 로 쓰면 사용자별 격리가 돼요.
+> `lib/axhub-server.ts` 는 server-only — `"use client"` 컴포넌트에서 import 하면 빌드가 깨져요.
 
-### 4-B. Gateway query — 외부 DB / SaaS 조회 (핵심 기능)
+### ② 로그인 버튼은 시작점으로
+
+로그인 버튼 href 는 `{API_BASE}/custom-domain-auth/start?target=<현재 주소 전체>` 예요 (헬퍼 `loginUrl()`). 시작점이 주소가 회사·퍼블릭·커스텀 중 어느 것인지 알아서 판정하고, 로그인이 끝나면 `target` 으로 돌려보내요. 앱은 주소 종류를 몰라도 돼요.
+
+### ③ 앱 로그아웃은 이 앱 주소의 세션만 끊어요
+
+로그아웃 href 는 앱 주소의 `/__axhub/auth/logout?return_to=/` 예요 (헬퍼 `logoutUrl()`). **이 앱 주소의 세션만** 끊고 axhub 콘솔 로그인은 유지돼요. 그래서 "들어올 때 axhub 로그인 요구" 가 켜진 앱은 콘솔에 로그인된 사용자가 다시 자동으로 들어와요 — 정상이에요. 회사 앱에는 끊을 앱 세션이 없어서 헬퍼가 `null` 을 돌려줘요 → 버튼을 숨기고 "콘솔에서 로그아웃하세요" 로 안내해요.
+
+### ④ 콘솔 로그아웃은 앱 세션을 즉시 끊지 않아요
+
+콘솔에서 로그아웃해도 이미 열린 앱 주소의 세션은 최대 12시간 남아 있을 수 있어요. 반면 **접근 권한**(앱 비활성화·계정 정지·공개 범위 변경)은 문이 매 요청 판정하므로 즉시 반영돼요.
+
+### ⑤ 익명은 오류가 아니에요
+
+"들어올 때 로그인 요구" 가 꺼진 앱은 로그인 안 한 방문자도 들어와요. 그때 헤더는 전부 빈 값이고 헬퍼는 `authenticated: false` 를 돌려줘요. 이건 **"로그인 안 됨" 이라는 정상 상태**예요 — 오류 문구 대신 로그인 버튼을 보여주세요.
+
+### ⑥ 예약 경로
+
+`/__axhub/auth/*` 는 플랫폼이 가로채는 예약 경로예요 (콜백·로그아웃). **앱 라우트로 쓸 수 없어요.**
+
+### 4-B. Gateway query — 외부 DB / SaaS 조회
+
+> ⚠️ gateway 는 **사용자별 grant** 를 따지므로 사용자 세션 쿠키(`_hub_access`)로 허브를 불러야 해요. 브라우저는 그 쿠키를 회사 앱 주소(`{앱}.{회사}.axhub.ai`)에만 보내요 → **회사 앱에서만 동작**하고 퍼블릭(`axhub.app`)·커스텀 도메인 앱에선 안 돼요. 방문자 신원(§4-A)과는 별개예요.
 
 axhub Gateway 는 자체 PostgreSQL / MySQL / SaaS connector 를 안전하게 조회시켜 줘요. 모든 호출이 audit log 에
 기록되고, connector 권한 정책으로 게이트돼요. **직접 DB 접속 금지** — 항상 SDK 의 `gateway.query` 만.
@@ -190,6 +233,8 @@ axhub 로 배포하면 `DATABASE_URL`/`DIRECT_DATABASE_URL`(전용 DB 발급) �
 | `next/headers` import 에러 | `"use client"` 컴포넌트에서 `lib/axhub-server` 를 import 했는지 확인 — server 전용 |
 | `TenantSlugRequiredError` 떨어짐 | `sdk.apps.*` 처럼 flat 호출 말고 `makeTenant()` 거치세요 — tenant 슬러그 자동 주입 |
 | `AxHubClient requires tokenType` 에러 | 직접 `new AxHubClient({ token })` 만들 때 발생. 그냥 `makeAxhub()` 쓰세요 — tokenType 자동 |
+| 배포했는데 항상 "로그인하지 않았어요" | 정상일 수 있어요(§4-A ⑤). 로그인 버튼으로 시작점에 가 보세요. 로그인 뒤에도 그대로면 `/api/...` 가 아닌 페이지 요청에서 `headers()` 로 `x-axhub-user-id` 가 오는지 확인 |
+| `queryConnector` 가 401 / "멤버가 아니에요" | 퍼블릭·커스텀 도메인 앱에선 사용자 쿠키가 없어 미지원 — 회사 앱 주소에서 확인 |
 | Tailwind class 가 안 먹음 | `tailwind.config.ts` 의 `content` 경로에 새 폴더 추가 |
 
 ## 8. 관련 자료
@@ -204,9 +249,10 @@ axhub 로 배포하면 `DATABASE_URL`/`DIRECT_DATABASE_URL`(전용 DB 발급) �
 
 - **데이터**: `lib/db.ts` 의 `db()` / `ensureSchema()` 가 표준 PostgreSQL 에 붙어요. `DATABASE_URL`(런타임, `prepare:false`) ·
   `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 가 전용 DB 발급 + 주입.
-- **인증/식별 · gateway**: `lib/axhub-server.ts` 의 `@ax-hub/sdk 6.x` — helper `makeAxhub` / `makeTenant` / `makeGateway` /
-  `queryConnector` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`. 들어온 요청의 쿠키(`next/headers` 의 `cookies()` 로 읽은
-  `_hub_access`)를 JWT 로 꺼내 SDK 에 박고 SDK 가 `Authorization: Bearer` 자동 처리. 정적 API key 안 써요.
+- **인증/식별**: `lib/axhub-server.ts` 의 `me()` / `loginUrl()` / `logoutUrl()` — axhub 문이 요청마다 실어 주는 `X-AxHub-*`
+  헤더를 `next/headers` 의 `headers()` 로 읽어요 (§4-A). 허브 API 에 다시 묻지 않아요. 정적 API key 안 써요.
+- **gateway(connector)**: 같은 파일의 `makeAxhub` / `makeTenant` / `makeGateway` / `queryConnector` — 들어온 요청의 `_hub_access` 쿠키를
+  `@ax-hub/sdk 6.x` JWT 로 박아 *그 사용자 자격*으로 호출해요. 사용자 쿠키가 실리는 **회사 앱 주소에서만** 동작(§4-B).
   모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
 
 ## 9. 라이선스

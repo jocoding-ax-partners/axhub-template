@@ -31,8 +31,6 @@ env:
       scope: build
     - name: VITE_APPHUB_TENANT
       scope: build
-    - name: VITE_APPHUB_APP_ORIGIN
-      scope: build
 
 # 선택: 배포 전 검증 명령. commands는 최대 10개예요.
 ci:

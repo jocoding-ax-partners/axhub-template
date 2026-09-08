@@ -65,10 +65,9 @@ src/pages/blog.astro 만들어줘.
 | 실행 방식 | Vite dev 서버 + HMR (포트 4321) | `astro build` → `node ./dist/server/entry.mjs` (포트 3000) |
 | `NODE_ENV` | `development` | `production` (Dockerfile 이 고정) |
 | DB | docker compose Postgres (`.env`) | axhub 발급 전용 DB (`DATABASE_URL` 자동 주입) |
-| 로그인 사용자 | 없음 → `'local-dev'` 폴백 | 실제 axhub 로그인 사용자 (`me.email`) |
+| 로그인 사용자 | 없음(문이 없음) → `'local-dev'` 폴백 | 문이 넘긴 헤더 → `me(Astro.request)` (`visitor.email`) |
 
-- 로그인(SDK 호출)은 axhub 세션 쿠키(`_hub_access`)가 필요해서 **로컬 단독으론 동작하지 않아요.**
-  로컬에선 사용자 키가 `'local-dev'` 로 폴백되고, 실제 로그인은 배포 후 확인하세요.
+- 로컬엔 axhub 문이 없어 방문자가 항상 익명이에요 — 사용자 키가 `'local-dev'` 로 폴백되고, 실제 로그인은 배포 후 확인하세요.
 - 배포 전에 프로덕션 모드로 미리 검증하고 싶으면: `npm run build && npm start`.
 
 ## 4. 데이터 저장 (표준 PostgreSQL)
@@ -97,16 +96,62 @@ const todos = await db()<{ id: string; title: string }[]>`
 - 새 테이블/컬럼이 필요하면 `src/lib/db.ts` 의 `ensureSchema()` 에 `CREATE TABLE IF NOT EXISTS ...` 한 줄을 추가해요 (별도 마이그레이션 도구 불필요).
 - **로컬**: `npm run db:up` 으로 Postgres 를 띄우고 `.env` 의 `DATABASE_URL` 사용 (§3-2). **배포**: `axhub.yaml` 의 `database: { engine: postgres }` 선언으로 axhub 가 전용 DB 를 발급하고 `DATABASE_URL` / `DIRECT_DATABASE_URL` 을 자동 주입해요.
 
-누가 로그인했는지(사용자별 데이터의 `user_key`)는 `@ax-hub/sdk 6.x` 로 — `src/lib/axhub-server.ts` 가 들어온 요청의 axhub 세션 쿠키를 *그 사용자 자격*으로 포워딩해요.
+## 4-A. 로그인 사용자 알기 (axhub 신원 계약)
+
+axhub 에 배포된 앱은 **허브에 "이 사람 누구야?" 라고 다시 묻지 않아요.** 앱 앞의 문(ingress 게이트)이 통과시킨 요청마다 사용자 정보를 헤더로 실어 주고, 앱은 그걸 **읽기만** 해요. 회사 앱(`{앱}.{회사}.axhub.ai`) · 퍼블릭 앱(`{앱}.axhub.app`) · 커스텀 도메인 모두 같은 계약이에요.
+
+> 왜 허브에 묻지 않나요? 허브 로그인 쿠키는 `axhub.ai` 계열 주소에만 실려요. 퍼블릭·커스텀 도메인은 다른 주소라 브라우저가 쿠키를 안 보내니, 허브 `/api/v1/me` 나 `sdk.identity.me` 로 방문자를 알아내는 방식은 **구조적으로 안 돼요.** 문이 넘기는 헤더는 주소 종류와 무관해요.
+
+### ① 문이 넘기는 헤더 (앱이 사용자를 아는 계약)
+
+| 헤더 | 값 |
+|---|---|
+| `X-AxHub-User-ID` | 사용자 UUID. **빈 문자열 = 익명 = 정상 상태** |
+| `X-AxHub-User-Email` | 이메일 — **base64(UTF-8)**, 디코드해서 써요 |
+| `X-AxHub-User-Name` | 이름 — **base64(UTF-8)**, 디코드해서 써요 |
+| `X-AxHub-App-Role` | `owner` / `platform_admin` / `tenant_admin` / `app_member` / `tenant_member` / `guest` (모르는 값은 최소 권한으로) |
+| `X-AxHub-Is-Admin` | `true` / `false` |
+| `X-AxHub-Tenant-Slug` | 앱을 소유한 워크스페이스 슬러그 |
+| `X-AxHub-Surface` | `tenant`(회사·퍼블릭·커스텀 모두) / `admin` / `public` |
+
+값은 문이 **매 요청 덮어써요** — 클라이언트가 헤더를 흉내 내도 지워져요. 그래서 앱은 검증 없이 믿고 읽으면 돼요.
+
+### 이 템플릿에서는
+
+서버(frontmatter / endpoint)는 요청 헤더를 직접 볼 수 있어요. `src/lib/axhub-server.ts` 의 `me(Astro.request)` 가 위 헤더를 읽어 객체로 돌려줘요. 허브 호출도, SDK 도 필요 없어요. 원본 헤더를 그대로 보고 싶으면 `/ssr` 페이지를 여세요.
 
 ```astro
 ---
-import { makeAxhub } from "../lib/axhub-server";
-const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
-const me = await sdk.identity.me();              // me.email 을 user_key 로 쓰면 사용자별 격리
+import { me, loginUrl, logoutUrl } from "../lib/axhub-server";
+const visitor = await me(Astro.request);   // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
+const logout = logoutUrl(Astro.request, "/");   // 회사 앱이면 null
 ---
-<p>안녕하세요, {me.name ?? me.email} 님</p>
+{visitor.authenticated
+  ? <p>환영합니다, {visitor.name || visitor.email}님 {logout ? <a href={logout}>로그아웃</a> : "(콘솔에서 로그아웃)"}</p>
+  : <a href={loginUrl(Astro.request)}>axhub 로 로그인</a>}   {/* 익명 = 정상 상태 */}
 ```
+
+> `visitor.email`(또는 `user_id`)을 데이터 테이블의 `user_key` 로 쓰면 사용자별 격리가 돼요.
+
+### ② 로그인 버튼은 시작점으로
+
+로그인 버튼 href 는 `{API_BASE}/custom-domain-auth/start?target=<현재 주소 전체>` 예요 (헬퍼 `loginUrl()`). 시작점이 주소가 회사·퍼블릭·커스텀 중 어느 것인지 알아서 판정하고, 로그인이 끝나면 `target` 으로 돌려보내요. 앱은 주소 종류를 몰라도 돼요.
+
+### ③ 앱 로그아웃은 이 앱 주소의 세션만 끊어요
+
+로그아웃 href 는 앱 주소의 `/__axhub/auth/logout?return_to=/` 예요 (헬퍼 `logoutUrl()`). **이 앱 주소의 세션만** 끊고 axhub 콘솔 로그인은 유지돼요. 그래서 "들어올 때 axhub 로그인 요구" 가 켜진 앱은 콘솔에 로그인된 사용자가 다시 자동으로 들어와요 — 정상이에요. 회사 앱에는 끊을 앱 세션이 없어서 헬퍼가 `null` 을 돌려줘요 → 버튼을 숨기고 "콘솔에서 로그아웃하세요" 로 안내해요.
+
+### ④ 콘솔 로그아웃은 앱 세션을 즉시 끊지 않아요
+
+콘솔에서 로그아웃해도 이미 열린 앱 주소의 세션은 최대 12시간 남아 있을 수 있어요. 반면 **접근 권한**(앱 비활성화·계정 정지·공개 범위 변경)은 문이 매 요청 판정하므로 즉시 반영돼요.
+
+### ⑤ 익명은 오류가 아니에요
+
+"들어올 때 로그인 요구" 가 꺼진 앱은 로그인 안 한 방문자도 들어와요. 그때 헤더는 전부 빈 값이고 헬퍼는 `authenticated: false` 를 돌려줘요. 이건 **"로그인 안 됨" 이라는 정상 상태**예요 — 오류 문구 대신 로그인 버튼을 보여주세요.
+
+### ⑥ 예약 경로
+
+`/__axhub/auth/*` 는 플랫폼이 가로채는 예약 경로예요 (콜백·로그아웃). **앱 라우트로 쓸 수 없어요.**
 
 > ⚠️ `src/lib/db.ts` · `src/lib/axhub-server.ts` 는 **Server-side 전용**이에요. `<script>` 태그(브라우저) 안에서 호출 금지 — 항상 frontmatter 또는 `src/pages/api/*.ts` endpoint 안에서. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `src/lib/axhub-server.ts` 를 직접 import 하세요.
 
@@ -166,7 +211,8 @@ npx astro add react   # config 자동 수정
 
 이 (Astro SSR) 템플릿은 **server-side** (frontmatter / API endpoint 는 서버에서 실행).
 - **데이터**: `src/lib/db.ts` 의 `db()` / `ensureSchema()` — 표준 PostgreSQL. 로컬은 docker compose, 배포는 axhub 가 `DATABASE_URL` / `DIRECT_DATABASE_URL` 주입.
-- **인증/식별**: `@ax-hub/sdk 6.x` 의 `AxHubClient` — helper 는 `makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()` 를 노출해요. axhub 로그인 세션 쿠키(`_hub_access`)로 인증: 호출 시 넘긴 `Astro.request` 쿠키를 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 써요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
+- **인증/식별**: `src/lib/axhub-server.ts` 의 `me(Astro.request)` / `loginUrl()` / `logoutUrl()` — axhub 문이 요청마다 실어 주는 `X-AxHub-*` 헤더를 읽어요 (§4-A). 허브 API 에 다시 묻지 않아요. 정적 API key 안 써요.
+- **허브 SDK**: 같은 파일의 `makeAxhub` / `makeTenant` — 사용자 자격으로 허브 API 를 불러야 할 때만. 넘긴 `Astro.request` 쿠키의 `_hub_access` 를 SDK JWT 로 전달하므로 **회사 앱 주소에서만** 동작해요. 모듈-레벨 client 캐시 금지 — 매 요청마다 factory.
 
 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 

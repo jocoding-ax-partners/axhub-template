@@ -1,31 +1,19 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { APP_SLUG, isAxhubConfigured, makeAxhub } from "../lib/axhub-server";
+import { APP_SLUG, isAxhubConfigured, loginUrl, logoutUrl, me } from "../lib/axhub-server";
 import { db, ensureSchema, isDbConfigured } from "../lib/db";
 
-// SDK 3.x identity.me 응답. 로그인한 사용자 + 활성 테넌트 멤버십.
-type Me = {
-  userId: string;
-  email: string;
-  name?: string;
-  tenants?: { tenantId: string; tenantSlug: string; role: string; isActive: boolean }[];
-};
+// 방문자 신원 — axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더를 me() 가 읽어요 (허브 호출 없음).
+// 로컬(미설정)이면 문이 없으니 항상 익명이에요.
+const configured = isAxhubConfigured();
+const visitor = await me(Astro.request);
+// 회사 앱은 앱 세션이 따로 없어 logoutUrl 이 null — 그땐 콘솔 로그아웃을 안내해요.
+const loginHref = configured ? loginUrl(Astro.request) : "";
+const logoutHref = configured ? logoutUrl(Astro.request, "/") : null;
 
-let me: Me | null = null;
-if (isAxhubConfigured()) {
-  try {
-    // frontmatter(서버)에서 들어온 요청의 쿠키를 ctx 로 넘기면 SDK 가 JWT Bearer 로 포워딩해요.
-    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
-    me = (await sdk.identity.me()) as Me;
-  } catch {
-    /* noop — 아래에서 안내 */
-  }
-}
-const tenant = me?.tenants?.[0];
-
-// 데이터를 가를 사용자 키. 배포 시엔 로그인 사용자(email), 로컬 단독 실행 땐 'local-dev'.
+// 데이터를 가를 사용자 키. 로그인 사용자는 email, 로그인 안 한 방문자는 'anonymous', 로컬 단독 실행 땐 'local-dev'.
 // 자기 데이터만 보이게 하려면 모든 쿼리를 이 값으로 필터하면 돼요 (아래 todo 예시 참고).
-const userKey = me?.email ?? "local-dev";
+const userKey = !configured ? "local-dev" : visitor.authenticated ? visitor.email : "anonymous";
 const dbReady = isDbConfigured();
 
 // Astro 는 output:"server" SSR 이라 frontmatter 에서 POST 를 직접 처리해요 (PRG 패턴).
@@ -76,14 +64,19 @@ if (dbReady) {
  *    // 폼 쓰기는 frontmatter 에서 Astro.request.method === "POST" → formData → db() → Astro.redirect("/").
  *    // 로컬은 `docker compose up -d` 로 Postgres 를 띄우면 돼요.
  *
- * 2) 로그인 사용자 · 누가 로그인했는지  (사용자별 데이터의 user_key)
- *    import { makeAxhub } from "../lib/axhub-server";
- *    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
- *    const me = await sdk.identity.me();          // me.email, me.name, me.tenants[]
- *    // me.email(또는 안정적인 사용자 식별자)을 테이블의 user_key 컬럼으로 쓰고,
- *    // 모든 쿼리를 WHERE user_key = ${me.email} 로 필터하면 사용자별 격리가 돼요.
+ * 2) 지금 방문자가 누구인지  (사용자별 데이터의 user_key)
+ *    import { me, loginUrl, logoutUrl } from "../lib/axhub-server";
+ *    const visitor = await me(Astro.request);
+ *    // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
+ *    // authenticated=false 는 오류가 아니라 "로그인 안 됨" 정상 상태 — 로그인 버튼(loginUrl(Astro.request))을 보여준다.
+ *    // 출처는 axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더 (허브 API 를 다시 부르지 않는다 —
+ *    // 퍼블릭(axhub.app)·커스텀 도메인에선 허브 쿠키가 없어 sdk.identity.me 는 401 이다).
+ *    // visitor.email(또는 user_id)을 테이블의 user_key 컬럼으로 쓰고,
+ *    // 모든 쿼리를 WHERE user_key = ${visitor.email} 로 필터하면 사용자별 격리가 돼요.
+ *    // 로그아웃: logoutUrl(Astro.request, "/") — 이 앱 주소의 세션만 끊는다. null 이면 회사 앱(콘솔 로그아웃 안내).
+ *    // "/__axhub/auth/*" 는 플랫폼 예약 경로 — 앱 라우트로 쓰지 않는다.
  *
- * 원본 identity.me 응답을 그대로 보고 싶으면 /ssr 페이지 참고.
+ * 문이 넘긴 헤더 원본을 그대로 보고 싶으면 /ssr 페이지 참고.
  * ───────────────────────────────────────────────────────────────────────────── */
 ---
 
@@ -98,29 +91,36 @@ if (dbReady) {
       <p class="lede">백엔드 · 인증 · 데이터베이스 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.</p>
     </header>
 
-    {/* 환영 카드 — sdk.identity.me 결과 */}
+    {/* 환영 카드 — me() 결과 (문이 넘긴 X-AxHub-* 헤더, 서버에서 읽음) */}
     <section class="card welcome">
       {
-        me ? (
+        visitor.authenticated ? (
           <Fragment>
             <span class="dot dot-ok" />
-            <p class="hello">환영합니다, {me.name ?? me.email}님 👋</p>
+            <p class="hello">환영합니다, {visitor.name || visitor.email}님 👋</p>
             <p class="sub">
-              {me.email}
-              {tenant ? ` · ${tenant.tenantSlug} (${tenant.role})` : ""}
+              {visitor.email}
+              {visitor.tenant_slug ? ` · ${visitor.tenant_slug} (${visitor.app_role})` : ""}
             </p>
+            {logoutHref ? (
+              <a href={logoutHref} class="btn btn-ghost">로그아웃</a>
+            ) : (
+              <p class="hint">회사 앱은 axhub 콘솔에서 로그아웃하면 돼요.</p>
+            )}
+          </Fragment>
+        ) : configured ? (
+          <Fragment>
+            {/* 익명은 오류가 아니라 정상 상태 — "들어올 때 로그인 요구" 가 꺼진 앱에선 누구나 여기까지 와요. */}
+            <span class="dot dot-anon" />
+            <p class="warn">로그인하지 않았어요</p>
+            <p class="sub">axhub 계정으로 로그인하면 여기 이름이 표시돼요.</p>
+            <a href={loginHref} class="btn btn-primary">axhub 로 로그인</a>
           </Fragment>
         ) : (
           <Fragment>
             <span class="dot dot-warn" />
-            <p class="warn">
-              {isAxhubConfigured()
-                ? "로그인 정보를 불러오지 못했어요. axhub 로그인 상태를 확인해 주세요."
-                : "로컬 실행 중"}
-            </p>
-            {!isAxhubConfigured() && (
-              <p class="sub">axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.</p>
-            )}
+            <p class="warn">로컬 실행 중</p>
+            <p class="sub">axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.</p>
           </Fragment>
         )
       }
@@ -180,7 +180,7 @@ if (dbReady) {
     <footer>
       <p class="tech">Astro · Node · TypeScript · PostgreSQL</p>
       <p class="slug">
-        원본 <code>/me</code> 응답: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
+        문이 넘긴 헤더 원본: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
         <code class="slug-code">{isAxhubConfigured() ? APP_SLUG : "(로컬 실행)"}</code>
       </p>
     </footer>
@@ -289,6 +289,39 @@ if (dbReady) {
   }
   .dot-warn {
     background: var(--warning);
+  }
+  .dot-anon {
+    background: var(--fg-subtle);
+  }
+  .btn {
+    display: inline-block;
+    margin-top: 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    padding: 0.5rem 1rem;
+  }
+  .btn-primary:hover {
+    background: var(--primary-hover);
+  }
+  .btn-ghost {
+    border: 1px solid var(--border-default);
+    color: var(--fg-default);
+    padding: 0.375rem 0.875rem;
+  }
+  .btn-ghost:hover {
+    border-color: var(--primary);
+  }
+  .hint {
+    color: var(--fg-subtle);
+    font-size: 0.75rem;
+    margin: 0.75rem 0 0;
   }
   .hello {
     font-size: 1.25rem;
