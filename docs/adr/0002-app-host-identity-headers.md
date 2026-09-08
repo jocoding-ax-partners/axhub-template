@@ -54,6 +54,9 @@ spec 597 인계 문서는 "허브 API 가 꼭 필요한 곳은 앱 토큰(spec 1
 | 로그아웃 | 익명으로 복귀 | 앱 세션만 끊기고 콘솔 세션으로 즉시 재진입(정상 ③) |
 | 헤더 위조 | 클라이언트가 `X-AxHub-User-ID` 를 실어 보내도 익명 유지 | 동일 |
 
+**프로덕션 회사 앱 실증(2026-09-08)**: `test` 테넌트에 self-hosted git(gitea) 백엔드로 nextjs 앱 `identity-headers-test`(`identity-headers.test.axhub.ai`, 나만보기)를 만들고
+새 템플릿 코드를 push → webhook 배포 성공(커밋 `0326832`). 콘솔 로그인된 브라우저로 진입 시 "환영합니다, 김수로님 · test (owner)" + "회사 앱은 axhub 콘솔에서 로그아웃하면 돼요"(`logoutUrl()` null) 확인. 익명은 콘솔 로그인으로 302.
+
 계획 항목:
 
 - 퍼블릭 앱 `public-test-9kkc.stage.axhub.app`(nextjs) · `app-2rhw.stage.axhub.app`(vite) 재배포 → 익명 표시(오류 아님) → 로그인 버튼 → 시작점 → 콜백 → 이름·이메일 → 로그아웃 → 익명.
