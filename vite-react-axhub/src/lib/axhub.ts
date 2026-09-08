@@ -33,23 +33,48 @@ function silentAlreadyTried(): boolean {
   }
 }
 
+// 일시적 실패 흡수용 짧은 대기.
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
 async function request(url: string, init: RequestInit): Promise<Response> {
-  const res = await fetch(url, {
-    credentials: "include",
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
-  });
-  if (res.status === 401) {
-    if (isSet(APP_ORIGIN) && !silentAlreadyTried()) {
-      try { sessionStorage.setItem(SILENT_TRIED_KEY, "1"); } catch { /* noop */ }
-      // axhub silent SSO 로 재인증 (return_origin = 이 앱). backend 가 _hub_hint 로 prompt=none 시도.
-      window.location.href = `${API_BASE}/auth/silent/start?return_origin=${encodeURIComponent(APP_ORIGIN)}`;
+  // 로그인 직후엔 세션이 완전히 안정되기 전이라 유효한 사용자에게도 /me 가 잠깐 401 을
+  // 줄 수 있고, 세션 리다이렉트 중 취소된 fetch 는 "Failed to fetch" 로 reject 된다.
+  // 둘 다 잠깐 뒤 재시도로 대부분 사라진다 → GET(멱등)만 몇 번 재시도한 뒤에야
+  // error / silent SSO 로 넘어간다. POST 등 비멱등 메서드는 이중 실행 위험이라 재시도 안 함.
+  const idempotent = (init.method ?? "GET").toUpperCase() === "GET";
+  const maxAttempts = idempotent ? 3 : 1;
+
+  for (let attempt = 1; ; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        credentials: "include",
+        ...init,
+        headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+      });
+    } catch (err) {
+      if (attempt >= maxAttempts) throw err; // 네트워크 실패 — 재시도 소진
+      await sleep(250 * attempt);
+      continue;
     }
-  } else if (res.status < 400) {
-    // 인증 정상 — 다음 만료 시 다시 1회 시도할 수 있게 가드 해제.
-    try { sessionStorage.removeItem(SILENT_TRIED_KEY); } catch { /* noop */ }
+    // 세션 미안정의 일시적 401 → 잠깐 뒤 재시도. 진짜 미인증이면 재시도해도 401 이라
+    // 소진 후 아래 silent SSO 로 넘어간다(재시도는 로그인 직후 flicker·error 고정을 없앤다).
+    if (res.status === 401 && attempt < maxAttempts) {
+      await sleep(250 * attempt);
+      continue;
+    }
+    if (res.status === 401) {
+      if (isSet(APP_ORIGIN) && !silentAlreadyTried()) {
+        try { sessionStorage.setItem(SILENT_TRIED_KEY, "1"); } catch { /* noop */ }
+        // axhub silent SSO 로 재인증 (return_origin = 이 앱). backend 가 _hub_hint 로 prompt=none 시도.
+        window.location.href = `${API_BASE}/auth/silent/start?return_origin=${encodeURIComponent(APP_ORIGIN)}`;
+      }
+    } else if (res.status < 400) {
+      // 인증 정상 — 다음 만료 시 다시 1회 시도할 수 있게 가드 해제.
+      try { sessionStorage.removeItem(SILENT_TRIED_KEY); } catch { /* noop */ }
+    }
+    return res;
   }
-  return res;
 }
 
 // 일반 Hub API 호출. path 예: "/api/v1/me"
