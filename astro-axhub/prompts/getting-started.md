@@ -17,7 +17,7 @@ src/pages/guestbook.astro 만들어줘.
 - src/lib/db.ts 의 ensureSchema() 에 guestbook 테이블(user_key, message) 추가
 - frontmatter 에서 Astro.request.method === "POST" 면 formData → db()`INSERT ...` → Astro.redirect("/guestbook") (PRG)
 - GET 이면 db()`SELECT ... WHERE user_key = ${userKey}` 로 내 글 목록 조회 후 카드 렌더
-- 로그인 사용자는 makeAxhub({ cookie }).identity.me() 로 (없으면 'local-dev')
+- 로그인 사용자는 me(Astro.request) 로 (익명은 'anonymous', 로컬은 'local-dev'). 익명이면 loginUrl(Astro.request) 로그인 버튼
 ```
 
 ## 3. API endpoint

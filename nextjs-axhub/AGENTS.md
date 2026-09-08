@@ -46,7 +46,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 ### D3. 사용자별 데이터 → `user_key` 컬럼 + 로그인 사용자
 - **자동 격리는 없어요.** 자기 데이터만 보이게 하려면 테이블에 `user_key text` 컬럼을 두고,
   모든 쿼리를 `WHERE user_key = ${userKey}` 로 직접 필터해요.
-- 로그인 사용자는 SDK 로: `const me = await (await makeAxhub()).identity.me()` → `me.email`(안정적인 식별자)을 `user_key` 로.
+- 로그인 사용자는 `const visitor = await me()` (`@/lib/axhub-server`, 문이 넘긴 `X-AxHub-*` 헤더) → `visitor.email`(또는 `user_id`)을 `user_key` 로. `visitor.authenticated=false` 는 오류가 아니라 익명(정상) — 로그인 버튼(`await loginUrl('/')`)을 보여줘요. `sdk.identity.me()` 로 방문자를 알아내지 마세요 — 퍼블릭·커스텀 도메인에선 401.
   배포 시엔 실제 로그인 사용자, 로컬 단독 실행 땐 `'local-dev'` 로 폴백 (예: `app/page.tsx` 의 `currentUserKey()`).
 
 ### D4. 로컬은 docker, 배포는 axhub 가 주입
@@ -73,7 +73,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 ## SDK 사용 프로토콜 (인증/식별 · 외부 connector)
 
 > 이 템플릿에서 `@ax-hub/sdk 6.x` 는 **인증/식별**과 **외부 connector(gateway)** 호출에 써요. (앱 데이터는 위 PostgreSQL.)
-> 사용자 자격은 `lib/axhub-server.ts` 의 `makeAxhub()` factory 가 자동 처리해요. raw `fetch()` 로 `api.axhub.ai` 직접 호출 금지.
+> 방문자 신원은 `lib/axhub-server.ts` 의 `me()` (문이 넘긴 헤더). 허브 SDK 가 필요한 gateway 는 `makeAxhub()` factory 가 사용자 자격을 처리하되 **회사 앱 주소에서만** 동작해요. raw `fetch()` 로 `api.axhub.ai` 직접 호출 금지.
 
 ### S1. 진입점은 factory 만 — 모듈 레벨 클라이언트 금지
 - ✅ 매 호출마다 `const sdk = await makeAxhub()`.
@@ -87,7 +87,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 
 ### S3. 서버 전용 — 클라이언트 컴포넌트에서 import 금지
 - ✅ `app/page.tsx`, `app/api/.../route.ts`, Server Action 안에서만 `lib/axhub-server.ts` / `lib/db.ts` import.
-- ❌ `"use client"` 컴포넌트에서 `makeAxhub` / `db` import — `next/headers` · DB 드라이버는 server-only 라 빌드 깨져요.
+- ❌ `"use client"` 컴포넌트에서 `me` / `makeAxhub` / `db` import — `next/headers` · DB 드라이버는 server-only 라 빌드 깨져요.
 - 클라이언트에서 백엔드가 필요하면 Route Handler (`app/api/.../route.ts`) 또는 Server Action 거치게.
 
 ### S4. 에러는 `error.code` / `instanceof` 로 분기 — 메시지 문자열 매칭 금지
@@ -158,7 +158,8 @@ try {
 
 - DO NOT `lib/db.ts` · `lib/axhub-server.ts`(server 전용)를 `"use client"` 컴포넌트에서 import.
 - DO NOT DB 쿼리에 사용자 입력을 문자열로 이어붙이기 — 항상 tagged-template `db()\`... ${value} ...\`` 로 바인딩.
-- DO NOT raw `fetch()` 로 `api.axhub.ai` 직접 호출 — identity/gateway 는 `makeAxhub()` / `queryConnector()` 경유.
+- DO NOT raw `fetch()` 로 `api.axhub.ai` 직접 호출 — 신원은 `me()`, gateway 는 `queryConnector()` 경유.
+- DO NOT `/__axhub/auth/*` 경로를 앱 라우트로 사용 — 플랫폼 예약.
 - DO NOT 모듈 레벨에 `AxHubClient` 인스턴스를 캐싱 (사용자 자격 누설).
 - DO NOT slug/tenant 를 코드에 하드코딩 — `TENANT` / `APP_SLUG` 상수 또는 helper 사용.
 - DO NOT `AxHubError.message` 한국어 문자열로 분기 — `code` / `category` / `instanceof` 만.
@@ -172,7 +173,7 @@ try {
 ## 신뢰 모델 (1-line)
 
 - **데이터**: `lib/db.ts` 의 `db()` / `ensureSchema()` — `DATABASE_URL`(런타임, prepare:false) · `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 주입.
-- **인증/식별 · gateway**: `lib/axhub-server.ts` 의 `makeAxhub` / `makeTenant` / `makeGateway` / `queryConnector` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`. 들어온 요청의 `_hub_access` 쿠키를 `AxHubClient({ token, tokenType: 'jwt' })` 로 박아 SDK 가 `Authorization: Bearer` 자동 처리.
+- **인증/식별**: `lib/axhub-server.ts` 의 `me()` / `loginUrl()` / `logoutUrl()` — axhub 문이 요청마다 실어 주는 `X-AxHub-*` 헤더를 `headers()` 로 읽어요. 허브에 다시 묻지 않아요. **gateway**: 같은 파일의 `makeAxhub` / `makeTenant` / `makeGateway` / `queryConnector` — 들어온 요청의 `_hub_access` 쿠키를 SDK JWT 로 박아요 (**회사 앱 주소에서만** 동작).
 
 ## 빠른 레퍼런스
 
@@ -184,10 +185,11 @@ await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`
 const rows = await db()<{ id: string; title: string; done: boolean }[]>`
   SELECT id::text, title, done FROM todos WHERE user_key = ${userKey} ORDER BY id DESC LIMIT 50`
 
-// ── 로그인 사용자 (사용자별 데이터의 user_key) ──
-import { makeAxhub } from '@/lib/axhub-server'
-const sdk = await makeAxhub()
-const me = await sdk.identity.me()    // me.email / me.name / me.tenants[]
+// ── 방문자 신원 (사용자별 데이터의 user_key) ──
+import { me, loginUrl, logoutUrl } from '@/lib/axhub-server'
+const visitor = await me()            // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
+// visitor.authenticated=false → 익명(정상): <a href={await loginUrl('/')}>로그인</a>
+// 로그아웃: await logoutUrl('/') — 회사 앱이면 null(콘솔 로그아웃 안내)
 
 // ── 조직 구성원 조회 (tenant_member 권한이면 가능, sdk 6.1+) ──
 const tenantId = me.tenants?.[0]?.tenantId ?? ''         // 테넌트 UUID (slug 아님)

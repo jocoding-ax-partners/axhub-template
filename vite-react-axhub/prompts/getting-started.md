@@ -16,7 +16,7 @@ src/App.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명] 
 
 ```
 src/components/Welcome.tsx 만들어줘. lib/axhub.ts 의 브라우저 세션 헬퍼로
-`axhub.fetch("/api/v1/me")` 를 호출해서 로그인한 사용자 이름·이메일을 환영 카드로 보여줘.
+`axhub.me()` 를 호출해서 로그인한 사용자 이름·이메일을 환영 카드로 보여주고, 로그인 안 했으면 `axhub.loginUrl()` 로 가는 로그인 버튼을 보여줘.
 로딩/에러 상태도 표시.
 ```
 

@@ -45,7 +45,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 ### D3. 사용자별 데이터 → `user_key` 컬럼 + 로그인 사용자
 - **자동 격리는 없어요.** 자기 데이터만 보이게 하려면 테이블에 `user_key text` 컬럼을 두고,
   모든 쿼리를 `WHERE user_key = ${userKey}` 로 직접 필터해요.
-- 로그인 사용자는 SDK 로: `const me = await makeAxhub(ctx).identity.me()` → `me.email`(안정적인 식별자)을 `user_key` 로.
+- 로그인 사용자는 `const visitor = await me(Astro.request)` (`../lib/axhub-server`, 문이 넘긴 `X-AxHub-*` 헤더) → `visitor.email`(또는 `user_id`)을 `user_key` 로. `visitor.authenticated=false` 는 오류가 아니라 익명(정상) — 로그인 버튼(`loginUrl(Astro.request)`)을 보여줘요. `sdk.identity.me()` 로 방문자를 알아내지 마세요 — 퍼블릭·커스텀 도메인에선 401.
   배포 시엔 실제 로그인 사용자, 로컬 단독 실행 땐 `'local-dev'` 로 폴백 (예: `src/pages/index.astro` 의 `userKey`).
 
 ### D4. 쓰기는 frontmatter POST (PRG) — Astro 는 SSR
@@ -104,7 +104,7 @@ const rows = await db()<{ id: string; title: string }[]>`
 
 이 (Astro) 템플릿은 **server-side** (frontmatter 는 빌드/요청 시 서버에서 실행).
 - **데이터**: `src/lib/db.ts` 의 `db()` / `ensureSchema()` — `DATABASE_URL`(런타임, prepare:false) · `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 주입.
-- **인증/식별**: `src/lib/axhub-server.ts` 의 `@ax-hub/sdk 6.x` factory(`makeAxhub` / `makeTenant` + `APP_SLUG` / `TENANT` / `isAxhubConfigured()`). 호출 시 넘긴 `Astro.request` 쿠키에서 `_hub_access` 를 꺼내 SDK JWT 로 전달하고, SDK 가 `Authorization: Bearer` 로 처리해요. 정적 API key 안 씀. `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
+- **인증/식별**: `src/lib/axhub-server.ts` 의 `me(Astro.request)` / `loginUrl()` / `logoutUrl()` — axhub 문이 요청마다 실어 주는 `X-AxHub-*` 헤더를 읽어요. 허브에 다시 묻지 않아요. 허브 SDK 가 꼭 필요할 때만 `makeAxhub` / `makeTenant` (넘긴 `Astro.request` 쿠키의 `_hub_access` 를 SDK JWT 로 — **회사 앱 주소에서만** 동작). `src/lib/axhub.ts` 는 호환 re-export 이며 새 코드는 `axhub-server` 를 직접 import. `/__axhub/auth/*` 는 플랫폼 예약 경로 — 앱 라우트 금지. 풀 비교 표는 [axhub-template README](../README.md#axhubts-신뢰-모델-3종-공통) 참고.
 
 ## 배포
 

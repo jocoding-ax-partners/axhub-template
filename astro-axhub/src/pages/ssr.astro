@@ -1,20 +1,20 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { isAxhubConfigured, makeAxhub } from "../lib/axhub-server";
+import { isAxhubConfigured, me } from "../lib/axhub-server";
 
-let upstream: { status: number; body: unknown } | null = null;
-let error: string | null = null;
-
-if (isAxhubConfigured()) {
-  try {
-    // 들어온 요청의 _hub_access 쿠키를 SDK JWT 로 포워딩해 사용자 자격으로 호출.
-    const sdk = makeAxhub({ cookie: Astro.request.headers.get("cookie") });
-    const body = await sdk.identity.me();
-    upstream = { status: 200, body };
-  } catch (err) {
-    error = String(err);
-  }
-}
+// 방문자 신원 원본 — axhub 문(ingress 게이트)이 이 요청에 실어 준 X-AxHub-* 헤더와 me() 가 해석한 결과.
+// 로컬 dev 엔 문이 없어 전부 빈 값(익명)이에요. 값은 문이 매 요청 덮어쓰므로 위조할 수 없어요.
+const HEADER_NAMES = [
+  "x-axhub-user-id",
+  "x-axhub-user-email",
+  "x-axhub-user-name",
+  "x-axhub-app-role",
+  "x-axhub-is-admin",
+  "x-axhub-tenant-slug",
+  "x-axhub-surface",
+];
+const rawHeaders = Object.fromEntries(HEADER_NAMES.map((n) => [n, Astro.request.headers.get(n) ?? ""]));
+const visitor = await me(Astro.request);
 
 const ts = new Date().toISOString();
 ---
@@ -29,23 +29,20 @@ const ts = new Date().toISOString();
 
     {!isAxhubConfigured() && (
       <div class="warn-card">
-        axhub 환경변수가 설정되지 않았어요. <code>.env</code> 또는 axhub 배포 환경을 확인해 주세요.
+        axhub 환경변수가 설정되지 않았어요. <code>.env</code> 또는 axhub 배포 환경을 확인해 주세요. (로컬은 문이 없어 아래가 전부 익명이에요)
       </div>
     )}
 
-    {error && (
-      <div class="warn-card">
-        호출 에러: <code>{error}</code>
-      </div>
-    )}
+    <section class="result">
+      <h2>me(Astro.request) 결과</h2>
+      <pre>{JSON.stringify(visitor, null, 2)}</pre>
+    </section>
 
-    {upstream && (
-      <section class="result">
-        <h2>sdk.identity.me() 응답</h2>
-        <p>HTTP <strong>{upstream.status}</strong></p>
-        <pre>{JSON.stringify(upstream.body, null, 2)}</pre>
-      </section>
-    )}
+    <section class="result">
+      <h2>문이 실어 준 X-AxHub-* 헤더 원본</h2>
+      <p>email / name 은 base64(UTF-8) — <code>me()</code> 가 디코드해요. 빈 값 = 익명(정상).</p>
+      <pre>{JSON.stringify(rawHeaders, null, 2)}</pre>
+    </section>
 
     <p><a href="/">← 홈으로</a></p>
   </main>

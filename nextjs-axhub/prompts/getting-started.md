@@ -15,9 +15,9 @@ app/page.tsx 메인 화면을 [내가 만들고 싶은 서비스 한 줄 설명]
 ## 2. axhub Hub API 호출하는 페이지
 
 ```
-/me 라우트 만들어줘. @ax-hub/sdk 6.x 의 sdk.identity.me 를 Server Component 에서 호출해서
-로그인 사용자 정보 + 소속 tenant 목록을 카드로 보여줘.
-lib/axhub-server.ts 의 makeAxhub() 사용. 에러는 AxHubError.code 로 분기.
+/me 라우트 만들어줘. lib/axhub-server.ts 의 me() 를 Server Component 에서 호출해서
+로그인 사용자 정보(이름·이메일·app_role)를 카드로 보여줘.
+로그인 안 했으면(authenticated=false) 오류 대신 loginUrl('/') 로 가는 로그인 버튼을 보여줘.
 ```
 
 ## 3. 입력 폼 + 저장 (앱 데이터 = 표준 Postgres)
@@ -28,7 +28,7 @@ Postgres 에 저장해줘. 먼저 lib/db.ts 의 ensureSchema() 에 feedback 테�
 (CREATE TABLE IF NOT EXISTS feedback (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  user_key text NOT NULL, message text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()))
 추가하고, insert 는 db()`INSERT INTO feedback (user_key, message) VALUES (${userKey}, ${message})`.
-userKey 는 makeAxhub() 의 sdk.identity.me() email (로컬은 'local-dev'). 저장 성공하면 "감사합니다" 표시.
+userKey 는 me() 의 email (익명은 'anonymous', 로컬은 'local-dev'). 저장 성공하면 "감사합니다" 표시.
 ```
 
 ## 3-A. Gateway query — 외부 DB 조회 페이지
