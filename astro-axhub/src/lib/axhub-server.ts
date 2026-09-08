@@ -22,6 +22,10 @@ import { AxHubClient, type TenantScopedClient } from "@ax-hub/sdk";
 const API_BASE = import.meta.env.APPHUB_API_URL ?? process.env.APPHUB_API_URL ?? "{{API_BASE}}";
 export const APP_SLUG = import.meta.env.APPHUB_APP_SLUG ?? process.env.APPHUB_APP_SLUG ?? "{{APP_SLUG}}";
 export const TENANT = import.meta.env.APPHUB_TENANT ?? process.env.APPHUB_TENANT ?? "{{TENANT}}";
+const APP_NAME_RAW = import.meta.env.APPHUB_APP_NAME ?? process.env.APPHUB_APP_NAME ?? "{{APP_NAME}}";
+
+/** 상단바에 보여줄 앱 이름. 배포 시 실제 이름으로 치환돼요. */
+export const APP_NAME = APP_NAME_RAW.includes("{{") ? "내 앱" : APP_NAME_RAW;
 
 export type AxhubCtx = { cookie?: string | null };
 

@@ -2,7 +2,7 @@
   "name": "astro-axhub",
   "private": true,
   "version": "0.1.0",
-  "description": "axhub \uc704\uc5d0\uc11c \ubc14\ub85c \uad74\ub7ec\uac00\ub294 Astro 5 SSR (Node 20+) \ud15c\ud50c\ub9bf",
+  "description": "axhub 위에서 바로 굴러가는 Astro 5 SSR (Node 20+) 템플릿",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -13,7 +13,8 @@
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d",
-    "db:psql": "docker compose -f docker-compose.dev.yml exec db psql -U postgres -d app"
+    "db:psql": "docker compose -f docker-compose.dev.yml exec db psql -U postgres -d app",
+    "check:design": "bash scripts/check-design.sh"
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",

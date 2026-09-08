@@ -1,23 +1,17 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { APP_SLUG, isAxhubConfigured, loginUrl, logoutUrl, me } from "../lib/axhub-server";
+import { isAxhubConfigured, me } from "../lib/axhub-server";
 import { db, ensureSchema, isDbConfigured } from "../lib/db";
 
-// 방문자 신원 — axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더를 me() 가 읽어요 (허브 호출 없음).
-// 로컬(미설정)이면 문이 없으니 항상 익명이에요.
+// 방문자 신원 — axhub 문이 요청마다 실어 주는 헤더를 읽어요 (허브 호출 없음).
 const configured = isAxhubConfigured();
 const visitor = await me(Astro.request);
-// 회사 앱은 앱 세션이 따로 없어 logoutUrl 이 null — 그땐 콘솔 로그아웃을 안내해요.
-const loginHref = configured ? loginUrl(Astro.request) : "";
-const logoutHref = configured ? logoutUrl(Astro.request, "/") : null;
 
-// 데이터를 가를 사용자 키. 로그인 사용자는 email, 로그인 안 한 방문자는 'anonymous', 로컬 단독 실행 땐 'local-dev'.
-// 자기 데이터만 보이게 하려면 모든 쿼리를 이 값으로 필터하면 돼요 (아래 todo 예시 참고).
+// 데이터를 가를 사용자 키. 로그인 사용자는 email, 익명 방문자는 'anonymous', 로컬은 'local-dev'.
 const userKey = !configured ? "local-dev" : visitor.authenticated ? visitor.email : "anonymous";
 const dbReady = isDbConfigured();
 
 // Astro 는 output:"server" SSR 이라 frontmatter 에서 POST 를 직접 처리해요 (PRG 패턴).
-// 폼 제출 → DB 쓰기 → redirect("/") 로 새로고침 후 GET 으로 목록 표시.
 if (dbReady && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const action = form.get("action");
@@ -34,7 +28,6 @@ if (dbReady && Astro.request.method === "POST") {
   return Astro.redirect("/");
 }
 
-// 내 할 일 목록 (자기 행만 — user_key 로 필터).
 let todos: { id: string; title: string; done: boolean }[] = [];
 if (dbReady) {
   await ensureSchema();
@@ -47,33 +40,47 @@ if (dbReady) {
   `;
 }
 
+const rows: [string, string][] = [
+  ["이름", visitor.name || "—"],
+  ["이메일", visitor.email || "—"],
+  ["워크스페이스", visitor.tenant_slug || "—"],
+  ["이 앱에서의 역할", visitor.app_role || "—"],
+  ["관리자", visitor.is_admin ? "예" : "아니오"],
+];
+
 /* ─────────────────────────────────────────────────────────────────────────────
- * 🤖 Claude Code / AI 에이전트 — 백엔드 호출 치트시트 (지우지 말 것)
+ * 🤖 Claude Code / AI 에이전트 — 이 앱 만드는 법 (지우지 말 것)
  *
- * 화면을 깔끔히 하려고 아래 패턴들을 주석으로 내렸을 뿐, 이 앱에서 그대로 쓰는 정식 패턴이다.
- * 전부 서버(frontmatter / src/pages/api/*.ts)에서 호출한다.
+ * 【디자인】 색·크기는 항상 토큰으로. #hex 나 font-size: 14px 같은 생값 금지.
+ *   - 배경은 회색(surface), 내용은 흰 카드(.ax-card) 안에. 이게 axhub 의 기본 모양이다.
+ *   - 페이지 = <div class="ax-stack"> 안에 .ax-page-header + 섹션들.
+ *   - 바깥 여백·최대 폭은 셸(.ax-container)이 이미 잡았다. 페이지가 또 붙이지 않는다.
+ *   - 쓸 수 있는 조각: .ax-card .ax-card-title .ax-section-title .ax-btn(.ax-btn-primary/.ax-btn-ghost)
+ *     .ax-input .ax-tag .ax-dot .ax-check .ax-empty .ax-muted .ax-small .ax-caption .ax-grid
+ *   - 페이지 안에서만 쓰는 스타일이 필요하면 <style> 에 쓰되 값은 var(--토큰) 으로.
+ *   - 전체 규칙은 src/styles/tokens.css 주석 참고. 그 파일은 자동 생성이라 고치지 않는다.
+ *
+ * 【레이아웃】 새 화면을 추가할 때
+ *   - src/layouts/Layout.astro 는 건드리지 않는다. 내용만 <Layout> 안에 넣는다.
+ *   - 사이드바 메뉴는 src/config/navigation.ts 배열에 한 줄 추가한다.
+ *
+ * 【백엔드】 전부 서버(frontmatter / src/pages/api/*.ts)에서 호출한다.
  *
  * 1) 데이터 저장·조회 · 표준 PostgreSQL  (이 앱의 데이터는 전부 여기로)
  *    import { db, ensureSchema } from "../lib/db";
- *    await ensureSchema();                       // 첫 read/write 전에 한 번 (테이블 정의는 src/lib/db.ts 에)
- *    // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전. 문자열 이어붙이기 금지.
+ *    await ensureSchema();                       // 첫 read/write 전에 한 번
  *    await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
- *    const rows = await db()<{ id: string; title: string }[]>`
- *      SELECT id::text, title FROM todos WHERE user_key = ${userKey} ORDER BY id DESC LIMIT 50`;
  *    // 새 테이블이 필요하면 src/lib/db.ts 의 ensureSchema() 에 CREATE TABLE IF NOT EXISTS 를 추가.
- *    // 폼 쓰기는 frontmatter 에서 Astro.request.method === "POST" → formData → db() → Astro.redirect("/").
+ *    // 폼 쓰기는 frontmatter 에서 POST → formData → db() → Astro.redirect("/").
  *    // 로컬은 `npm run db:up` 으로 Postgres 를 띄우면 돼요.
  *
  * 2) 지금 방문자가 누구인지  (사용자별 데이터의 user_key)
  *    import { me, loginUrl, logoutUrl } from "../lib/axhub-server";
  *    const visitor = await me(Astro.request);
  *    // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
- *    // authenticated=false 는 오류가 아니라 "로그인 안 됨" 정상 상태 — 로그인 버튼(loginUrl(Astro.request))을 보여준다.
+ *    // authenticated=false 는 오류가 아니라 "로그인 안 됨" 정상 상태 — 로그인 버튼을 보여준다.
  *    // 출처는 axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더 (허브 API 를 다시 부르지 않는다 —
- *    // 퍼블릭(axhub.app)·커스텀 도메인에선 허브 쿠키가 없어 sdk.identity.me 는 401 이다).
- *    // visitor.email(또는 user_id)을 테이블의 user_key 컬럼으로 쓰고,
- *    // 모든 쿼리를 WHERE user_key = ${visitor.email} 로 필터하면 사용자별 격리가 돼요.
- *    // 로그아웃: logoutUrl(Astro.request, "/") — 이 앱 주소의 세션만 끊는다. null 이면 회사 앱(콘솔 로그아웃 안내).
+ *    // 퍼블릭·커스텀 도메인에선 허브 쿠키가 없어 sdk.identity.me 는 401 이다).
  *    // "/__axhub/auth/*" 는 플랫폼 예약 경로 — 앱 라우트로 쓰지 않는다.
  *
  * 문이 넘긴 헤더 원본을 그대로 보고 싶으면 /ssr 페이지 참고.
@@ -81,440 +88,198 @@ if (dbReady) {
 ---
 
 <Layout title="axhub × Astro">
-  <div class="glow" aria-hidden="true"></div>
-  <main>
-    {/* 히어로 */}
-    <header class="hero">
-      <div class="tile"><span class="sheen"></span><span>ax</span></div>
-      <span class="badge">vibe-coding starter</span>
-      <h1>axhub <span class="accent">×</span> Astro</h1>
-      <p class="lede">백엔드 · 인증 · 데이터베이스 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.</p>
-    </header>
+  {/* 페이지 내용은 .ax-stack 으로 세로로 쌓아요. 바깥 여백은 셸이 이미 잡아 놨어요. */}
+  <div class="ax-stack">
+    <div class="ax-page-header">
+      <div>
+        <h1 class="ax-page-title">시작하기</h1>
+        <p class="ax-page-desc">
+          백엔드 · 인증 · 데이터베이스 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.
+        </p>
+      </div>
+      <a class="ax-btn ax-btn-ghost" href="https://docs.axhub.ai/ko/docs" target="_blank" rel="noreferrer">
+        가이드 보기
+      </a>
+    </div>
 
-    {/* 환영 카드 — me() 결과 (문이 넘긴 X-AxHub-* 헤더, 서버에서 읽음) */}
-    <section class="card welcome">
-      {
-        visitor.authenticated ? (
-          <Fragment>
-            <span class="dot dot-ok" />
-            <p class="hello">환영합니다, {visitor.name || visitor.email}님 👋</p>
-            <p class="sub">
-              {visitor.email}
-              {visitor.tenant_slug ? ` · ${visitor.tenant_slug} (${visitor.app_role})` : ""}
+    {/* 방문자 신원 데모 — 실제 앱에선 지우고 원하는 내용을 넣으세요. */}
+    <section class="ax-card">
+      <h2 class="ax-card-title">지금 이 앱을 보고 있는 사람</h2>
+      <p class="ax-card-desc">
+        axhub 문이 요청마다 실어 주는 <code class="ax-tag">X-AxHub-*</code> 헤더를 읽은 결과예요. 허브에 다시 묻지 않아요.
+      </p>
+
+      <div class="visitor">
+        {
+          !configured ? (
+            <p class="ax-muted ax-small">
+              로컬 실행 중이라 아직 아무도 없어요. axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.
             </p>
-            {logoutHref ? (
-              <a href={logoutHref} class="btn btn-ghost">로그아웃</a>
-            ) : (
-              <p class="hint">회사 앱은 axhub 콘솔에서 로그아웃하면 돼요.</p>
-            )}
-          </Fragment>
-        ) : configured ? (
-          <Fragment>
-            {/* 익명은 오류가 아니라 정상 상태 — "들어올 때 로그인 요구" 가 꺼진 앱에선 누구나 여기까지 와요. */}
-            <span class="dot dot-anon" />
-            <p class="warn">로그인하지 않았어요</p>
-            <p class="sub">axhub 계정으로 로그인하면 여기 이름이 표시돼요.</p>
-            <a href={loginHref} class="btn btn-primary">axhub 로 로그인</a>
-          </Fragment>
-        ) : (
-          <Fragment>
-            <span class="dot dot-warn" />
-            <p class="warn">로컬 실행 중</p>
-            <p class="sub">axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.</p>
-          </Fragment>
-        )
-      }
+          ) : (
+            <dl class="rows">
+              <div class="row">
+                <dt class="ax-caption ax-subtle">상태</dt>
+                <dd class="ax-small">
+                  <span class:list={["ax-dot", visitor.authenticated ? "ax-dot-ok" : "ax-dot-idle"]} />
+                  {visitor.authenticated ? "로그인함" : "로그인 안 함 (정상)"}
+                </dd>
+              </div>
+              {rows.map(([label, value]) => (
+                <div class="row">
+                  <dt class="ax-caption ax-subtle">{label}</dt>
+                  <dd class="ax-small">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )
+        }
+      </div>
     </section>
 
     {/* 데이터 데모 — 표준 Postgres(src/lib/db.ts) 로 저장하는 사용자별 할 일 */}
-    <section class="card todo">
-      <div class="todo-head">
-        <p class="todo-title">내 할 일</p>
-        <code class="todo-tag">PostgreSQL · src/lib/db.ts</code>
+    <section class="ax-card">
+      <div class="card-head">
+        <div>
+          <h2 class="ax-card-title">내 할 일</h2>
+          <p class="ax-card-desc">사용자별로 갈린 표준 PostgreSQL 데이터예요.</p>
+        </div>
+        <code class="ax-tag">src/lib/db.ts</code>
       </div>
 
-      {
-        dbReady ? (
-          <Fragment>
-            <form method="POST" class="todo-form">
-              <input type="hidden" name="action" value="add" />
-              <input name="title" placeholder="할 일을 입력하고 Enter" autocomplete="off" class="todo-input" />
-              <button type="submit" class="todo-add">추가</button>
-            </form>
+      <div class="todo-body">
+        {
+          dbReady ? (
+            <Fragment>
+              <form method="POST" class="todo-form">
+                <input type="hidden" name="action" value="add" />
+                <input name="title" placeholder="할 일을 입력하고 Enter" autocomplete="off" class="ax-input" />
+                <button type="submit" class="ax-btn ax-btn-primary">추가</button>
+              </form>
 
-            <ul class="todo-list">
-              {todos.length === 0 ? (
-                <li class="todo-empty">아직 없어요 — 위에서 하나 추가해 보세요.</li>
-              ) : (
-                todos.map((t) => (
-                  <li class="todo-item">
-                    <form method="POST">
-                      <input type="hidden" name="action" value="toggle" />
-                      <input type="hidden" name="id" value={t.id} />
-                      <button type="submit" aria-label="완료 토글" class:list={["todo-check", { done: t.done }]}>
-                        {t.done ? "✓" : ""}
-                      </button>
-                    </form>
-                    <span class:list={["todo-text", { done: t.done }]}>{t.title}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </Fragment>
-        ) : (
-          <p class="todo-hint">
-            로컬 DB 가 아직 없어요. <code>npm run db:up</code> 으로 Postgres 를 띄우고{" "}
-            <code>.env</code> 에 DATABASE_URL 을 채워 주세요.
-          </p>
-        )
-      }
+              <ul class="todo-list">
+                {todos.length === 0 ? (
+                  <li class="ax-empty">아직 없어요. 위에서 하나 추가해 보세요.</li>
+                ) : (
+                  todos.map((t) => (
+                    <li class="todo-item">
+                      <form method="POST">
+                        <input type="hidden" name="action" value="toggle" />
+                        <input type="hidden" name="id" value={t.id} />
+                        <button type="submit" aria-label="완료 토글" class="ax-check" data-done={t.done}>
+                          {t.done ? "✓" : ""}
+                        </button>
+                      </form>
+                      <span class:list={["ax-small", { "ax-done": t.done }]}>{t.title}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </Fragment>
+          ) : (
+            <p class="ax-muted ax-small">
+              로컬 DB 가 아직 없어요. <code class="ax-tag">npm run db:up</code> 으로 Postgres 를 띄우고
+              <code class="ax-tag">.env</code> 에 DATABASE_URL 을 채워 주세요.
+            </p>
+          )
+        }
+      </div>
     </section>
 
-    {/* 다음 단계 */}
-    <div class="steps">
-      <div class="step"><span class="num">1</span><p class="step-t">화면 만들기</p><code>src/pages/index.astro</code></div>
-      <div class="step"><span class="num">2</span><p class="step-t">데이터 저장</p><code>src/lib/db.ts</code></div>
-      <div class="step"><span class="num">3</span><p class="step-t">배포</p><code>/axhub:deploy</code></div>
-    </div>
-
-    <footer>
-      <p class="tech">Astro · Node · TypeScript · PostgreSQL</p>
-      <p class="slug">
-        문이 넘긴 헤더 원본: <a href="/ssr">/ssr</a> · 이 앱 슬러그:
-        <code class="slug-code">{isAxhubConfigured() ? APP_SLUG : "(로컬 실행)"}</code>
-      </p>
-    </footer>
-  </main>
+    <section>
+      <h2 class="ax-section-title">다음 단계</h2>
+      <div class="ax-grid ax-grid-3">
+        <div class="ax-card">
+          <span class="ax-tag">1</span>
+          <p class="step-t">화면 만들기</p>
+          <p class="ax-caption ax-subtle step-c">src/pages/index.astro</p>
+          <p class="ax-small ax-muted step-d">이 페이지 내용을 바꾸면 돼요.</p>
+        </div>
+        <div class="ax-card">
+          <span class="ax-tag">2</span>
+          <p class="step-t">데이터 저장</p>
+          <p class="ax-caption ax-subtle step-c">src/lib/db.ts</p>
+          <p class="ax-small ax-muted step-d">평범한 SQL 을 쓰면 돼요.</p>
+        </div>
+        <div class="ax-card">
+          <span class="ax-tag">3</span>
+          <p class="step-t">배포</p>
+          <p class="ax-caption ax-subtle step-c">/axhub:deploy</p>
+          <p class="ax-small ax-muted step-d">Claude Code 에서 한 줄로 배포해요.</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </Layout>
 
 <style>
-  .glow {
-    position: fixed;
-    top: -12rem;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40rem;
-    height: 40rem;
-    border-radius: 9999px;
-    background: var(--primary-soft);
-    opacity: 0.7;
-    filter: blur(80px);
-    pointer-events: none;
-    z-index: -1;
+  /* 이 페이지에서만 쓰는 배치. 색·크기는 토큰(var(--...))만 씁니다. */
+  .visitor {
+    margin-top: 20px;
   }
-  main {
-    max-width: 36rem;
-    margin: 0 auto;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1.75rem;
-    padding: 5rem 1.5rem;
-    text-align: center;
-  }
-  .hero {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .tile {
-    position: relative;
-    width: 3.5rem;
-    height: 3.5rem;
-    border-radius: 14px;
-    margin-bottom: 1.25rem;
+  .rows {
     display: grid;
-    place-items: center;
-    color: #fff;
-    font-weight: 700;
-    font-size: 1.125rem;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    box-shadow: var(--shadow-lg, 0 10px 16px -4px rgba(0, 0, 0, 0.18));
-  }
-  .tile .sheen {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25), transparent 55%);
-  }
-  .tile span:last-child {
-    position: relative;
-  }
-  .badge {
-    display: inline-block;
-    background: var(--primary-soft);
-    color: var(--primary);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-  }
-  h1 {
-    font-size: 2.75rem;
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    margin: 1rem 0 0;
-  }
-  .accent {
-    color: var(--primary);
-  }
-  .lede {
-    color: var(--fg-muted);
-    font-size: 0.95rem;
-    line-height: 1.6;
-    max-width: 24rem;
-    margin: 0.65rem 0 0;
-  }
-  .card {
-    width: 100%;
-    background: var(--bg-content);
-    border: 1px solid var(--border-default);
-    border-radius: 16px;
-    padding: 1.75rem;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-  }
-  .dot {
-    display: block;
-    width: 0.625rem;
-    height: 0.625rem;
-    border-radius: 9999px;
-    margin: 0 auto 0.75rem;
-  }
-  .dot-ok {
-    background: var(--success);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 25%, transparent);
-  }
-  .dot-warn {
-    background: var(--warning);
-  }
-  .dot-anon {
-    background: var(--fg-subtle);
-  }
-  .btn {
-    display: inline-block;
-    margin-top: 1rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background 0.2s, border-color 0.2s;
-  }
-  .btn-primary {
-    background: var(--primary);
-    color: #fff;
-    padding: 0.5rem 1rem;
-  }
-  .btn-primary:hover {
-    background: var(--primary-hover);
-  }
-  .btn-ghost {
-    border: 1px solid var(--border-default);
-    color: var(--fg-default);
-    padding: 0.375rem 0.875rem;
-  }
-  .btn-ghost:hover {
-    border-color: var(--primary);
-  }
-  .hint {
-    color: var(--fg-subtle);
-    font-size: 0.75rem;
-    margin: 0.75rem 0 0;
-  }
-  .hello {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    grid-template-columns: 1fr;
+    gap: 12px 24px;
     margin: 0;
   }
-  .warn {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin: 0;
+  @media (min-width: 640px) {
+    .rows {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
-  .sub {
-    color: var(--fg-muted);
-    font-size: 0.875rem;
-    margin: 0.4rem 0 0;
-  }
-  /* ── 데이터 데모 (할 일) ── */
-  .todo {
-    text-align: left;
-  }
-  .todo-head {
+  .row {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    gap: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-default);
   }
-  .todo-title {
-    font-size: 0.875rem;
-    font-weight: 600;
+  .row dd {
     margin: 0;
+    text-align: right;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
-  .todo-tag {
-    background: var(--primary-soft);
-    color: var(--primary);
-    font-size: 0.6875rem;
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .todo-body {
+    margin-top: 20px;
   }
   .todo-form {
     display: flex;
-    gap: 0.5rem;
-  }
-  .todo-input {
-    flex: 1;
-    border: 1px solid var(--border-default);
-    background: var(--bg-surface);
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    outline: none;
-  }
-  .todo-input:focus {
-    border-color: var(--primary);
-  }
-  .todo-add {
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 0.5rem 0.875rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .todo-add:hover {
-    background: var(--primary-hover);
+    gap: 8px;
   }
   .todo-list {
     list-style: none;
-    margin: 0.75rem 0 0;
+    margin: 16px 0 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
-  }
-  .todo-empty {
-    text-align: center;
-    color: var(--fg-subtle);
-    font-size: 0.875rem;
-    padding: 0.5rem 0;
+    gap: 6px;
   }
   .todo-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 12px;
     border: 1px solid var(--border-default);
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-  }
-  .todo-check {
-    display: grid;
-    place-items: center;
-    width: 1rem;
-    height: 1rem;
-    border-radius: 4px;
-    border: 1px solid var(--border-default);
-    background: transparent;
-    color: #fff;
-    font-size: 0.625rem;
-    cursor: pointer;
-    padding: 0;
-  }
-  .todo-check.done {
-    border-color: var(--success);
-    background: var(--success);
-  }
-  .todo-text {
-    font-size: 0.875rem;
-  }
-  .todo-text.done {
-    color: var(--fg-subtle);
-    text-decoration: line-through;
-  }
-  .todo-hint {
-    font-size: 0.875rem;
-    color: var(--fg-muted);
-    margin: 0;
-  }
-  .todo-hint code {
-    background: var(--primary-soft);
-    color: var(--primary);
-    padding: 0.05rem 0.3rem;
-    border-radius: 4px;
-  }
-
-  .steps {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-  }
-  @media (max-width: 30rem) {
-    .steps {
-      grid-template-columns: 1fr;
-    }
-  }
-  .step {
-    background: var(--bg-content);
-    border: 1px solid var(--border-default);
-    border-radius: 12px;
-    padding: 1rem;
-    text-align: left;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .step:hover {
-    border-color: var(--primary);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
-  }
-  .num {
-    display: grid;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 9999px;
-    background: var(--primary-soft);
-    color: var(--primary);
-    font-size: 0.75rem;
-    font-weight: 700;
+    border-radius: var(--radius-control);
+    padding: 8px 12px;
   }
   .step-t {
-    font-size: 0.875rem;
+    margin: 12px 0 0;
     font-weight: 600;
-    margin: 0.6rem 0 0.25rem;
   }
-  .step code {
-    font-size: 0.6875rem;
-    color: var(--fg-subtle);
+  .step-c {
+    margin: 4px 0 0;
+    font-family: var(--font-mono);
   }
-  footer {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .tech {
-    color: var(--fg-subtle);
-    font-size: 0.75rem;
-    margin: 0;
-  }
-  .slug {
-    color: var(--fg-subtle);
-    font-size: 0.6875rem;
-    margin: 0;
-  }
-  .slug a {
-    color: var(--primary);
-    text-decoration: none;
-  }
-  .slug-code {
-    background: var(--primary-soft);
-    color: var(--primary);
-    padding: 0.05rem 0.3rem;
-    border-radius: 4px;
+  .step-d {
+    margin: 8px 0 0;
   }
 </style>

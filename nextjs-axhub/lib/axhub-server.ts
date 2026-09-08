@@ -27,11 +27,15 @@ import { AxHubClient, type TenantScopedClient, type TenantGatewayClient, type Ga
 const API_BASE = process.env.APPHUB_API_URL || '{{API_BASE}}'
 export const APP_SLUG = process.env.APPHUB_APP_SLUG || '{{APP_SLUG}}'
 export const TENANT = process.env.APPHUB_TENANT || '{{TENANT}}'
+const APP_NAME_RAW = process.env.APPHUB_APP_NAME || '{{APP_NAME}}'
 
 const isSet = (v: string): boolean => Boolean(v) && !v.includes('{{')
 
 // 환경값 + tenant/app slug 가 모두 placeholder 치환됐는지 확인.
 // false 면 SDK 호출 직전에 명시적 에러로 끊고 사용자에게 axhub 배포 / .env 안내.
+/** 상단바에 보여줄 앱 이름. 배포 시 실제 이름으로 치환돼요. */
+export const APP_NAME = APP_NAME_RAW.includes('{{') ? '내 앱' : APP_NAME_RAW
+
 export function isAxhubConfigured(): boolean {
   return isSet(API_BASE) && isSet(APP_SLUG) && isSet(TENANT)
 }

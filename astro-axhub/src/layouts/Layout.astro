@@ -1,9 +1,27 @@
 ---
+/**
+ * 앱 전체 뼈대 — 상단바 + 사이드바 + 본문. axhub 콘솔과 같은 골격이에요.
+ *
+ * 화면을 추가할 땐 이 파일이 아니라 <Layout> 안에 내용을 넣으세요.
+ * 메뉴를 늘리려면 src/config/navigation.ts 를 고치세요.
+ */
+import "../styles/tokens.css";
+import { NAVIGATION } from "../config/navigation";
+import { APP_NAME, isAxhubConfigured, loginUrl, logoutUrl, me } from "../lib/axhub-server";
+
 export interface Props {
   title: string;
   description?: string;
 }
 const { title, description = "조코딩 AX 파트너스 axhub 바이브코딩 템플릿 (Astro SSR)" } = Astro.props as Props;
+
+// 방문자 신원 — axhub 문이 요청마다 실어 주는 헤더를 읽어요 (허브 호출 없음).
+const visitor = await me(Astro.request);
+const configured = isAxhubConfigured();
+const loginHref = configured ? loginUrl(Astro.request) : "";
+// 회사 앱은 끊을 앱 세션이 없어 null 이에요. 그땐 콘솔 로그아웃을 안내해요.
+const logoutHref = configured ? logoutUrl(Astro.request, "/") : null;
+const path = new URL(Astro.request.url).pathname;
 ---
 
 <!DOCTYPE html>
@@ -22,67 +40,103 @@ const { title, description = "조코딩 AX 파트너스 axhub 바이브코딩 �
     />
   </head>
   <body>
-    <slot />
+    <div class="ax-shell">
+      <header class="ax-topbar">
+        <button type="button" class="ax-menu-btn" aria-label="메뉴 열기" data-drawer-open>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+
+        <a class="ax-brand" href="/">
+          <span class="ax-brand-mark">ax</span>
+          <span class="ax-brand-name">{APP_NAME}</span>
+        </a>
+
+        <div class="ax-topbar-main">
+          {/* 메뉴·검색을 상단에 두고 싶으면 여기에 넣으세요. */}
+          <div class="ax-topbar-center"></div>
+          <div class="ax-topbar-right">
+            {
+              !configured ? (
+                <span class="ax-caption ax-subtle">로컬 실행 중</span>
+              ) : visitor.authenticated ? (
+                <Fragment>
+                  <span class="ax-small">{visitor.name || visitor.email}</span>
+                  {logoutHref ? (
+                    <a class="ax-btn ax-btn-ghost ax-btn-sm" href={logoutHref}>로그아웃</a>
+                  ) : (
+                    <span class="ax-caption ax-subtle">콘솔에서 로그아웃</span>
+                  )}
+                </Fragment>
+              ) : (
+                <a class="ax-btn ax-btn-primary ax-btn-sm" href={loginHref}>axhub 로 로그인</a>
+              )
+            }
+          </div>
+        </div>
+      </header>
+
+      <div class="ax-body">
+        <nav class="ax-sidebar" aria-label="주 메뉴">
+          {
+            NAVIGATION.map((item) => (
+              <a
+                class="ax-nav-item"
+                href={item.href}
+                aria-current={!item.external && item.href === path ? "page" : undefined}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noreferrer" : undefined}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d={item.icon} />
+                </svg>
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+
+        <main class="ax-main">
+          <div class="ax-container">
+            <slot />
+          </div>
+        </main>
+      </div>
+
+      <!-- 좁은 화면용 서랍 -->
+      <div class="ax-drawer" data-drawer data-open="false">
+        <div class="ax-drawer-backdrop" data-drawer-close></div>
+        <nav class="ax-drawer-panel" aria-label="주 메뉴">
+          {
+            NAVIGATION.map((item) => (
+              <a
+                class="ax-nav-item"
+                href={item.href}
+                aria-current={!item.external && item.href === path ? "page" : undefined}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noreferrer" : undefined}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d={item.icon} />
+                </svg>
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+    </div>
+
+    <script>
+      // 좁은 화면 메뉴 서랍 여닫기.
+      const drawer = document.querySelector("[data-drawer]");
+      document
+        .querySelector("[data-drawer-open]")
+        ?.addEventListener("click", () => drawer?.setAttribute("data-open", "true"));
+      document
+        .querySelector("[data-drawer-close]")
+        ?.addEventListener("click", () => drawer?.setAttribute("data-open", "false"));
+    </script>
   </body>
 </html>
-
-<style is:global>
-  /* ──────────────────────────────────────────────────────────────────────
-   * axhub 디자인 시스템 토큰 (v2.1 발췌) — 콘솔/프론트와 무드 정렬.
-   * primary=블루, surface=gray-50 위 흰 카드, Pretendard. 다크는 prefers-color-scheme.
-   * ────────────────────────────────────────────────────────────────────── */
-  :root {
-    --primary: #2d64fa;
-    --primary-hover: #5985fb;
-    --primary-soft: #eaf0fe;
-
-    --bg-surface: #f6f7f9;
-    --bg-content: #ffffff;
-
-    --fg-default: #16171b;
-    --fg-muted: #6d717e;
-    --fg-subtle: #9ca0ab;
-
-    --border-default: #e4e5e8;
-
-    --success: #27c961;
-    --warning: #f6c205;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --primary: #4b7bff;
-      --primary-hover: #5985fb;
-      --primary-soft: rgba(75, 123, 255, 0.22);
-
-      --bg-surface: #1d1e23;
-      --bg-content: #25272d;
-
-      --fg-default: #ffffff;
-      --fg-muted: #d1d3d8;
-      --fg-subtle: #9ca0ab;
-
-      --border-default: rgba(255, 255, 255, 0.1);
-
-      --success: #3ddb78;
-      --warning: #ffe246;
-    }
-  }
-
-  html {
-    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
-      "Segoe UI", Roboto, sans-serif;
-    color: var(--fg-default);
-    background-color: var(--bg-surface);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  body {
-    margin: 0;
-    padding: 0;
-  }
-
-  code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-</style>

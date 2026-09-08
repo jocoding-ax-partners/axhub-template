@@ -1,0 +1,603 @@
+/* ══════════════════════════════════════════════════════════════════════════
+ * axhub 디자인 토큰 + 기본 레이아웃
+ *
+ * ⚠️ 이 파일은 자동 생성돼요. 직접 고치지 마세요.
+ *    정본: axhub-template 레포의 design/tokens.css
+ *    반영: node scripts/sync-design.mjs
+ *
+ * 값은 axhub 콘솔이 쓰는 @jocoding-ax-partners/design-system 기준이에요.
+ * 토큰 이름도 콘솔과 같아서, 콘솔 화면 코드를 그대로 참고할 수 있어요.
+ *
+ * 쓰는 법
+ *   - 색·크기는 항상 토큰으로. #hex 나 text-[15px] 같은 생값을 쓰지 마세요.
+ *   - 뼈대(.ax-shell/.ax-topbar/.ax-sidebar/.ax-container)는 건드리지 마세요.
+ *   - 내용은 .ax-card 안에 넣으세요. 회색 바탕 위 흰 카드가 axhub 의 기본 모양이에요.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 토큰 ─────────────────────────────────────────────────────────────── */
+
+:root {
+  /* 브랜드 */
+  --primary: #2d64fa;
+  --primary-hover: #5985fb;
+  --primary-soft: #eaf0fe;
+  --primary-soft-hover: #d6e2fd;
+  --primary-fg: #ffffff;
+
+  /* 배경 — 회색 캔버스(surface) 위에 흰 카드(content) 가 기본 */
+  --bg-surface: #fafbfc;
+  --bg-content: #ffffff;
+  --bg-muted: #f5f6f8;
+
+  /* 글자 4단 */
+  --fg-default: #16171b;
+  --fg-secondary: #3c3f47;
+  --fg-muted: #6d717e;
+  --fg-subtle: #9ca0ab;
+
+  /* 선 */
+  --border-default: #e4e5e8;
+  --border-strong: #d1d5db;
+
+  /* 상태 */
+  --success: #1fa24e;
+  --warning: #f6c205;
+  --danger: #ef1026;
+  --info: #1571f3;
+
+  /* 모서리 */
+  --radius-card: 12px;
+  --radius-control: 10px;
+  --radius-sm: 6px;
+  --radius-pill: 9999px;
+
+  /* 글자 크기 */
+  --text-page-title: 32px;
+  --text-section: 20px;
+  --text-card-title: 18px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --text-caption: 12px;
+
+  /* 레이아웃 (콘솔과 같은 값) */
+  --sidebar-width: 244px;
+  --topbar-height: 60px;
+  --content-max: 1280px;
+  --container-pad: 20px;
+  --section-gap: 40px;
+
+  /* 서체 */
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  color-scheme: light;
+}
+
+/* 다크 — 토글이 있으면 [data-theme] 이 이기고, 없으면 시스템 설정을 따라요. */
+:root[data-theme="dark"] {
+  --primary: #4b7bff;
+  --primary-hover: #5985fb;
+  --primary-soft: rgba(75, 123, 255, 0.22);
+  --primary-soft-hover: rgba(75, 123, 255, 0.32);
+
+  --bg-surface: #25272d;
+  --bg-content: #1d1e23;
+  --bg-muted: #3f3f46;
+
+  --fg-default: #ffffff;
+  --fg-secondary: #e4e5e8;
+  --fg-muted: #d1d3d8;
+  --fg-subtle: #9ca0ab;
+
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --success: #3ddb78;
+  --warning: #ffe246;
+  --danger: #ff6b7a;
+  --info: #5b9dff;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #4b7bff;
+    --primary-hover: #5985fb;
+    --primary-soft: rgba(75, 123, 255, 0.22);
+    --primary-soft-hover: rgba(75, 123, 255, 0.32);
+
+    --bg-surface: #25272d;
+    --bg-content: #1d1e23;
+    --bg-muted: #3f3f46;
+
+    --fg-default: #ffffff;
+    --fg-secondary: #e4e5e8;
+    --fg-muted: #d1d3d8;
+    --fg-subtle: #9ca0ab;
+
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.16);
+
+    --success: #3ddb78;
+    --warning: #ffe246;
+    --danger: #ff6b7a;
+    --info: #5b9dff;
+
+    color-scheme: dark;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --container-pad: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-pad: 40px;
+  }
+}
+
+/* ── 2. 기본 ─────────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  color: var(--fg-default);
+  background: var(--bg-surface);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* ── 3. 뼈대 — 고치지 마세요 ──────────────────────────────────────────────── */
+
+/* 상단바가 전체 폭을 쓰고, 그 아래를 사이드바와 본문이 나눠요 (콘솔과 같은 골격). */
+.ax-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.ax-topbar {
+  display: flex;
+  align-items: center;
+  height: var(--topbar-height);
+  flex: 0 0 auto;
+  background: var(--bg-content);
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* 상단바 왼쪽 브랜드 칸은 사이드바와 같은 폭 — 세로 경계선이 맞아요. */
+.ax-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 16px;
+  flex: 0 0 auto;
+  text-decoration: none;
+  color: var(--fg-default);
+}
+
+@media (min-width: 1024px) {
+  .ax-brand {
+    width: var(--sidebar-width);
+    padding: 0 20px;
+    border-right: 1px solid var(--border-default);
+  }
+}
+
+.ax-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ax-brand-name {
+  font-size: var(--text-small);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ax-topbar-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 20px;
+}
+
+/* 상단바 가운데 — 메뉴나 검색을 넣고 싶으면 여기에 넣으세요. */
+.ax-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ax-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.ax-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ax-sidebar {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  width: var(--sidebar-width);
+  flex: 0 0 auto;
+  padding: 16px 12px;
+  background: var(--bg-content);
+  border-right: 1px solid var(--border-default);
+}
+
+@media (min-width: 1024px) {
+  .ax-sidebar {
+    display: flex;
+  }
+}
+
+.ax-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-control);
+  color: var(--fg-secondary);
+  font-size: var(--text-small);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ax-nav-item:hover {
+  background: var(--primary-soft);
+  color: var(--fg-default);
+}
+
+.ax-nav-item[aria-current="page"] {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.ax-nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.ax-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 바깥 여백의 유일한 출처. 페이지는 자기 여백이나 최대 폭을 붙이지 않아요. */
+.ax-container {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 40px var(--container-pad) 120px;
+}
+
+/* 모바일 메뉴 버튼 — 1024px 미만에서만 보여요. */
+.ax-menu-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-left: 12px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-default);
+  cursor: pointer;
+}
+
+.ax-menu-btn:hover {
+  background: var(--bg-muted);
+}
+
+@media (min-width: 1024px) {
+  .ax-menu-btn {
+    display: none;
+  }
+}
+
+/* 모바일 서랍 */
+.ax-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+}
+
+.ax-drawer[data-open="true"] {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .ax-drawer {
+    display: none !important;
+  }
+}
+
+.ax-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.ax-drawer-panel {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 12px;
+  background: var(--bg-content);
+  border-right: 1px solid var(--border-default);
+}
+
+/* ── 4. 페이지 조각 ───────────────────────────────────────────────────────── */
+
+/* 세로로 쌓는 기본 간격 */
+.ax-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+.ax-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 20px;
+}
+
+.ax-page-title {
+  margin: 0;
+  font-size: var(--text-page-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fg-default);
+}
+
+.ax-page-desc {
+  margin: 12px 0 0;
+  font-size: var(--text-card-title);
+  color: var(--fg-muted);
+}
+
+/* 카드 밖 섹션 제목 */
+.ax-section-title {
+  margin: 0 0 16px;
+  font-size: var(--text-section);
+  font-weight: 600;
+  color: var(--fg-default);
+}
+
+/* 카드 — 내용은 이 안에 넣어요. */
+.ax-card {
+  background: var(--bg-content);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  padding: 24px;
+}
+
+.ax-card-title {
+  margin: 0;
+  font-size: var(--text-card-title);
+  font-weight: 600;
+  color: var(--fg-default);
+}
+
+.ax-card-desc {
+  margin: 6px 0 0;
+  font-size: var(--text-small);
+  color: var(--fg-muted);
+}
+
+/* 카드 안 구획 나누기 */
+.ax-grid {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .ax-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 버튼 */
+.ax-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-family: inherit;
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ax-btn-primary {
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+
+.ax-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.ax-btn-ghost {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--fg-default);
+}
+
+.ax-btn-ghost:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.ax-btn-sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--text-caption);
+}
+
+/* 입력 */
+.ax-input {
+  height: 40px;
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-content);
+  color: var(--fg-default);
+  font-family: inherit;
+  font-size: var(--text-small);
+  outline: none;
+}
+
+.ax-input:focus {
+  border-color: var(--primary);
+}
+
+.ax-input::placeholder {
+  color: var(--fg-subtle);
+}
+
+/* 체크박스 (할 일 목록 등) */
+.ax-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--primary-fg);
+  font-size: var(--text-caption);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ax-check[data-done="true"] {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+/* 완료된 항목 */
+.ax-done {
+  color: var(--fg-subtle);
+  text-decoration: line-through;
+}
+
+/* 상태 점 */
+.ax-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  flex: 0 0 auto;
+}
+
+.ax-dot-ok {
+  background: var(--success);
+}
+
+.ax-dot-idle {
+  background: var(--fg-subtle);
+}
+
+.ax-dot-warn {
+  background: var(--warning);
+}
+
+/* 작은 태그 */
+.ax-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+/* 아무것도 없을 때 */
+.ax-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--fg-subtle);
+  font-size: var(--text-small);
+}
+
+/* 글자 보조 */
+.ax-muted {
+  color: var(--fg-muted);
+}
+
+.ax-subtle {
+  color: var(--fg-subtle);
+}
+
+.ax-small {
+  font-size: var(--text-small);
+}
+
+.ax-caption {
+  font-size: var(--text-caption);
+}

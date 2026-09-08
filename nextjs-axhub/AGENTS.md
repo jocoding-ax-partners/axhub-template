@@ -6,6 +6,55 @@
 ## 사용자
 비전공자 한국인 vibe coder. 한국어로 답해요. 코드 용어는 풀어서 설명해요. 결과는 화면으로 확인.
 
+## 디자인 — 토큰과 레이아웃 (에이전트 필수)
+
+이 템플릿은 axhub 콘솔과 같은 디자인 토큰·레이아웃을 쓰고 있어요. **화면을 만들 때 이 규칙을 지켜야 앱들이 같은 모양으로 보여요.**
+
+### 색·크기는 항상 토큰으로
+
+- ❌ `#2d64fa`, `bg-[#eee]`, `text-[15px]`, `text-gray-500`, `bg-white`
+- ✅ `var(--primary)`, `text-muted`, `bg-content`, `border-default`, `rounded-card`, `.ax-small`
+- 이유: 다크 모드가 토큰 값만 바꿔서 동작해요. 생값을 쓰면 그 부분만 색이 안 따라가요.
+- 예외가 꼭 필요하면 같은 줄에 `design-token-allow` 주석을 답니다.
+- `bash scripts/check-design.sh` 가 위반을 잡아요. 배포 전에 자동으로 돌아요.
+
+### 회색 바탕 위 흰 카드
+
+내용은 `.ax-card` 안에 넣어요. 이게 axhub 의 기본 모양이에요. 카드 밖에 글씨를 그냥 얹지 마세요.
+
+### 페이지 모양
+
+```
+<div class="ax-stack">                     세로 40px 간격
+  <div class="ax-page-header">             제목 + 오른쪽 액션
+    <div>
+      <h1 class="ax-page-title">제목</h1>
+      <p class="ax-page-desc">한 줄 설명</p>
+    </div>
+    <a class="ax-btn ax-btn-ghost">버튼</a>
+  </div>
+  <section class="ax-card"> … </section>
+</div>
+```
+
+바깥 여백과 최대 폭은 셸이 이미 잡았어요. 페이지가 또 붙이지 마세요.
+
+### 쓸 수 있는 조각
+
+`.ax-card` `.ax-card-title` `.ax-card-desc` `.ax-section-title` `.ax-btn`(`.ax-btn-primary` / `.ax-btn-ghost` / `.ax-btn-sm`) `.ax-input` `.ax-tag` `.ax-dot` `.ax-check` `.ax-empty` `.ax-grid`(`.ax-grid-3`) `.ax-muted` `.ax-subtle` `.ax-small` `.ax-caption` `.ax-done`
+
+Tailwind 는 배치(flex·grid·gap·mt)에 쓰고, 색과 크기는 위 조각이나 토큰 클래스를 쓰세요.
+
+### 건드리지 않는 파일
+
+- `app/tokens.css` — 자동 생성이에요. 고치려면 axhub-template 레포의 `design/tokens.css` 를 고치고 `node scripts/sync-design.mjs` 를 돌려요.
+- `components/AppShell.tsx · components/Nav.tsx` — 앱 전체 뼈대예요. 내용만 그 안에 넣어요.
+
+### 화면·메뉴 추가
+
+- 새 화면은 셸 안에 내용만 넣어요.
+- 사이드바 메뉴는 `config/navigation.ts` 배열에 한 줄 추가해요.
+
 ## Stack
 Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ ·
 **데이터는 표준 PostgreSQL** (`lib/db.ts`, `DATABASE_URL`) · **인증/식별 · 외부 connector 는 `@ax-hub/sdk 6.x`** (`lib/axhub-server.ts`).
