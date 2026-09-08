@@ -2,6 +2,7 @@
 //
 //   { label: "할 일", href: "/todos", icon: ICONS.list }
 //
+// 바깥 사이트로 나가는 링크는 external: true 를 붙여요.
 // icon 은 24×24 SVG 의 path 예요. 새 아이콘이 필요하면 path 문자열만 추가하세요.
 
 export const ICONS = {
@@ -22,5 +23,4 @@ export type NavItem = {
 export const NAVIGATION: NavItem[] = [
   { label: "홈", href: "/", icon: ICONS.home },
   { label: "SSR 데모", href: "/ssr", icon: ICONS.code },
-  { label: "가이드", href: "https://docs.axhub.ai/ko/docs", icon: ICONS.book, external: true },
 ];
