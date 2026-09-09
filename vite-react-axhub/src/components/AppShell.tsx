@@ -104,17 +104,18 @@ function UserArea({ me }: { me: AxhubMe | null }) {
     );
   }
 
-  // 회사 앱은 끊을 앱 세션이 없어 null 이에요. 그땐 콘솔 로그아웃을 안내해요.
+  // 회사 앱은 끊을 앱 세션이 없어 null 이에요.
+  // 그땐 버튼처럼 보이는 문구를 두지 않고 이름에 설명만 붙여요.
   const logout = axhub.logoutUrl("/");
   return (
     <>
-      <span className="ax-small">{me.name || me.email}</span>
-      {logout ? (
+      <span className="ax-small" title={logout ? undefined : "이 앱은 axhub 콘솔 로그인을 그대로 써요. 로그아웃은 콘솔에서 하세요."}>
+        {me.name || me.email}
+      </span>
+      {logout && (
         <a className="ax-btn ax-btn-ghost ax-btn-sm" href={logout}>
           로그아웃
         </a>
-      ) : (
-        <span className="ax-caption ax-subtle">콘솔에서 로그아웃</span>
       )}
     </>
   );
