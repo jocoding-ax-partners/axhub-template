@@ -35,13 +35,15 @@ export async function AppShell({ children }: { children: ReactNode }) {
               <span className="ax-caption ax-subtle">로컬 실행 중</span>
             ) : visitor.authenticated ? (
               <>
-                <span className="ax-small">{visitor.name || visitor.email}</span>
-                {logoutHref ? (
+                {/* 회사 앱은 끊을 앱 세션이 없어 logoutHref 가 null 이에요.
+                    그땐 버튼처럼 보이는 문구를 두지 않고 이름에 설명만 붙여요. */}
+                <span className="ax-small" title={logoutHref ? undefined : '이 앱은 axhub 콘솔 로그인을 그대로 써요. 로그아웃은 콘솔에서 하세요.'}>
+                  {visitor.name || visitor.email}
+                </span>
+                {logoutHref && (
                   <a className="ax-btn ax-btn-ghost ax-btn-sm" href={logoutHref}>
                     로그아웃
                   </a>
-                ) : (
-                  <span className="ax-caption ax-subtle">콘솔에서 로그아웃</span>
                 )}
               </>
             ) : (
