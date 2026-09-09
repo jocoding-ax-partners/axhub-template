@@ -1,44 +1,19 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { isAxhubConfigured, me } from "../lib/axhub-server";
-import { db, ensureSchema, isDbConfigured } from "../lib/db";
+import { APP_NAME, isAxhubConfigured, me } from "../lib/axhub-server";
+import { isDbConfigured } from "../lib/db";
 
 // 방문자 신원 — axhub 문이 요청마다 실어 주는 헤더를 읽어요 (허브 호출 없음).
 const configured = isAxhubConfigured();
 const visitor = await me(Astro.request);
-
-// 데이터를 가를 사용자 키. 로그인 사용자는 email, 익명 방문자는 'anonymous', 로컬은 'local-dev'.
-const userKey = !configured ? "local-dev" : visitor.authenticated ? visitor.email : "anonymous";
 const dbReady = isDbConfigured();
 
-// Astro 는 output:"server" SSR 이라 frontmatter 에서 POST 를 직접 처리해요 (PRG 패턴).
-if (dbReady && Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
-  const action = form.get("action");
-  await ensureSchema();
-  if (action === "add") {
-    const title = String(form.get("title") ?? "").trim();
-    // 값은 tagged-template 으로 — 자동 바인딩되어 SQL 인젝션 안전.
-    if (title) await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
-  } else if (action === "toggle") {
-    const id = String(form.get("id") ?? "");
-    // 자기 행만 — user_key 로 한 번 더 가드.
-    if (id) await db()`UPDATE todos SET done = NOT done WHERE id = ${id}::bigint AND user_key = ${userKey}`;
-  }
-  return Astro.redirect("/");
-}
-
-let todos: { id: string; title: string; done: boolean }[] = [];
-if (dbReady) {
-  await ensureSchema();
-  todos = await db()<{ id: string; title: string; done: boolean }[]>`
-    SELECT id::text, title, done
-    FROM todos
-    WHERE user_key = ${userKey}
-    ORDER BY id DESC
-    LIMIT 50
-  `;
-}
+const title = visitor.authenticated ? `환영합니다, ${visitor.name || visitor.email}님 👋` : "환영합니다 👋";
+const desc = !configured
+  ? "로컬에서 실행 중이에요. axhub 로 배포하면 로그인한 사용자가 여기 표시돼요."
+  : visitor.authenticated
+    ? `${APP_NAME} 이 준비됐어요. 이제 화면만 만들면 돼요.`
+    : "오른쪽 위에서 로그인하면 이름이 여기 표시돼요.";
 
 const rows: [string, string][] = [
   ["이름", visitor.name || "—"],
@@ -48,6 +23,14 @@ const rows: [string, string][] = [
   ["관리자", visitor.is_admin ? "예" : "아니오"],
 ];
 
+const DB_ON = `import { db, ensureSchema } from "../lib/db";
+
+await ensureSchema();
+await db()\`INSERT INTO todos (user_key, title) VALUES (\${userKey}, \${title})\`;`;
+
+const DB_OFF = `database:
+  engine: postgres`;
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * 🤖 Claude Code / AI 에이전트 — 이 앱 만드는 법 (지우지 말 것)
  *
@@ -55,8 +38,9 @@ const rows: [string, string][] = [
  *   - 배경은 회색(surface), 내용은 흰 카드(.ax-card) 안에. 이게 axhub 의 기본 모양이다.
  *   - 페이지 = <div class="ax-stack"> 안에 .ax-page-header + 섹션들.
  *   - 바깥 여백·최대 폭은 셸(.ax-container)이 이미 잡았다. 페이지가 또 붙이지 않는다.
- *   - 쓸 수 있는 조각: .ax-card .ax-card-title .ax-section-title .ax-btn(.ax-btn-primary/.ax-btn-ghost)
- *     .ax-input .ax-tag .ax-dot .ax-check .ax-empty .ax-muted .ax-small .ax-caption .ax-grid
+ *   - 쓸 수 있는 조각: .ax-card .ax-card-title .ax-card-desc .ax-section-title
+ *     .ax-btn(.ax-btn-primary/.ax-btn-ghost/.ax-btn-sm) .ax-input .ax-tag .ax-dot .ax-check
+ *     .ax-code .ax-empty .ax-grid(.ax-grid-3) .ax-muted .ax-subtle .ax-small .ax-caption .ax-done
  *   - 페이지 안에서만 쓰는 스타일이 필요하면 <style> 에 쓰되 값은 var(--토큰) 으로.
  *   - 전체 규칙은 src/styles/tokens.css 주석 참고. 그 파일은 자동 생성이라 고치지 않는다.
  *
@@ -66,23 +50,25 @@ const rows: [string, string][] = [
  *
  * 【백엔드】 전부 서버(frontmatter / src/pages/api/*.ts)에서 호출한다.
  *
- * 1) 데이터 저장·조회 · 표준 PostgreSQL  (이 앱의 데이터는 전부 여기로)
- *    import { db, ensureSchema } from "../lib/db";
- *    await ensureSchema();                       // 첫 read/write 전에 한 번
- *    await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
- *    // 새 테이블이 필요하면 src/lib/db.ts 의 ensureSchema() 에 CREATE TABLE IF NOT EXISTS 를 추가.
- *    // 폼 쓰기는 frontmatter 에서 POST → formData → db() → Astro.redirect("/").
- *    // 로컬은 `npm run db:up` 으로 Postgres 를 띄우면 돼요.
- *
- * 2) 지금 방문자가 누구인지  (사용자별 데이터의 user_key)
+ * 1) 지금 방문자가 누구인지
  *    import { me, loginUrl, logoutUrl } from "../lib/axhub-server";
  *    const visitor = await me(Astro.request);
  *    // { authenticated, user_id, email, name, app_role, is_admin, tenant_slug, surface }
  *    // authenticated=false 는 오류가 아니라 "로그인 안 됨" 정상 상태 — 로그인 버튼을 보여준다.
  *    // 출처는 axhub 문이 요청마다 실어 주는 X-AxHub-* 헤더 (허브 API 를 다시 부르지 않는다 —
  *    // 퍼블릭·커스텀 도메인에선 허브 쿠키가 없어 sdk.identity.me 는 401 이다).
+ *    // 헤더 원본을 직접 보고 싶으면 Astro.request.headers 를 그대로 찍어 보면 된다.
  *    // "/__axhub/auth/*" 는 플랫폼 예약 경로 — 앱 라우트로 쓰지 않는다.
- *    // 헤더 원본을 직접 보고 싶으면 Astro.request.headers 를 그대로 찍어 보면 돼요.
+ *
+ * 2) 데이터 저장·조회 · 표준 PostgreSQL
+ *    ⚠️ 기본으로는 DB 가 없다. axhub.yaml 의 database 선언 주석을 풀고
+ *    다시 배포해야 발급된다. 로컬은 `npm run db:up`.
+ *    import { db, ensureSchema } from "../lib/db";
+ *    await ensureSchema();                       // 첫 read/write 전에 한 번
+ *    await db()`INSERT INTO todos (user_key, title) VALUES (${userKey}, ${title})`;
+ *    // 새 테이블이 필요하면 src/lib/db.ts 의 ensureSchema() 에 CREATE TABLE IF NOT EXISTS 를 추가.
+ *    // 폼 쓰기는 frontmatter 에서 POST → formData → db() → Astro.redirect("/").
+ *    // 사용자별로 가르려면 visitor.email(또는 user_id)을 user_key 컬럼으로 쓰고 늘 필터한다.
  * ───────────────────────────────────────────────────────────────────────────── */
 ---
 
@@ -91,19 +77,17 @@ const rows: [string, string][] = [
   <div class="ax-stack">
     <div class="ax-page-header">
       <div>
-        <h1 class="ax-page-title">시작하기</h1>
-        <p class="ax-page-desc">
-          백엔드 · 인증 · 데이터베이스 · 배포가 이미 연결된 스타터예요. 화면만 만들면 돼요.
-        </p>
+        <h1 class="ax-page-title">{title}</h1>
+        <p class="ax-page-desc">{desc}</p>
       </div>
       <a class="ax-btn ax-btn-ghost" href="https://docs.axhub.ai/ko/docs" target="_blank" rel="noreferrer">
         가이드 보기
       </a>
     </div>
 
-    {/* 방문자 신원 데모 — 실제 앱에선 지우고 원하는 내용을 넣으세요. */}
+    {/* 신원 데모 — 실제 앱에선 지우고 원하는 내용을 넣으세요. */}
     <section class="ax-card">
-      <h2 class="ax-card-title">지금 이 앱을 보고 있는 사람</h2>
+      <h2 class="ax-card-title">내 정보</h2>
       <p class="ax-card-desc">
         axhub 문이 요청마다 실어 주는 <code class="ax-tag">X-AxHub-*</code> 헤더를 읽은 결과예요. 허브에 다시 묻지 않아요.
       </p>
@@ -111,9 +95,7 @@ const rows: [string, string][] = [
       <div class="visitor">
         {
           !configured ? (
-            <p class="ax-muted ax-small">
-              로컬 실행 중이라 아직 아무도 없어요. axhub 로 배포하면 로그인한 사용자가 여기 표시돼요.
-            </p>
+            <p class="ax-muted ax-small">로컬에는 문(게이트)이 없어서 값이 비어 있어요. 배포하면 채워져요.</p>
           ) : (
             <dl class="rows">
               <div class="row">
@@ -135,75 +117,51 @@ const rows: [string, string][] = [
       </div>
     </section>
 
-    {/* 데이터 데모 — 표준 Postgres(src/lib/db.ts) 로 저장하는 사용자별 할 일 */}
-    <section class="ax-card">
-      <div class="card-head">
-        <div>
-          <h2 class="ax-card-title">내 할 일</h2>
-          <p class="ax-card-desc">사용자별로 갈린 표준 PostgreSQL 데이터예요.</p>
-        </div>
-        <code class="ax-tag">src/lib/db.ts</code>
-      </div>
+    <section>
+      <h2 class="ax-section-title">시작 안내</h2>
 
-      <div class="todo-body">
+      {/* 데이터베이스는 기본으로 붙지 않아요 — 필요할 때 켜는 방식이에요. */}
+      <div class="ax-card">
+        <h3 class="ax-card-title">데이터베이스 연결하기</h3>
         {
           dbReady ? (
             <Fragment>
-              <form method="POST" class="todo-form">
-                <input type="hidden" name="action" value="add" />
-                <input name="title" placeholder="할 일을 입력하고 Enter" autocomplete="off" class="ax-input" />
-                <button type="submit" class="ax-btn ax-btn-primary">추가</button>
-              </form>
-
-              <ul class="todo-list">
-                {todos.length === 0 ? (
-                  <li class="ax-empty">아직 없어요. 위에서 하나 추가해 보세요.</li>
-                ) : (
-                  todos.map((t) => (
-                    <li class="todo-item">
-                      <form method="POST">
-                        <input type="hidden" name="action" value="toggle" />
-                        <input type="hidden" name="id" value={t.id} />
-                        <button type="submit" aria-label="완료 토글" class="ax-check" data-done={t.done}>
-                          {t.done ? "✓" : ""}
-                        </button>
-                      </form>
-                      <span class:list={["ax-small", { "ax-done": t.done }]}>{t.title}</span>
-                    </li>
-                  ))
-                )}
-              </ul>
+              <p class="ax-card-desc">
+                연결돼 있어요. <code class="ax-tag">src/lib/db.ts</code> 로 바로 쿼리하면 돼요.
+              </p>
+              <code class="ax-code">{DB_ON}</code>
             </Fragment>
           ) : (
-            <p class="ax-muted ax-small">
-              로컬 DB 가 아직 없어요. <code class="ax-tag">npm run db:up</code> 으로 Postgres 를 띄우고
-              <code class="ax-tag">.env</code> 에 DATABASE_URL 을 채워 주세요.
-            </p>
+            <Fragment>
+              <p class="ax-card-desc">
+                이 앱은 아직 데이터베이스가 없어요. 필요하면 <code class="ax-tag">axhub.yaml</code> 에서 아래 두 줄의
+                주석을 풀고 다시 배포하세요. 전용 PostgreSQL 이 발급되고 접속 정보가 자동으로 들어와요.
+              </p>
+              <code class="ax-code">{DB_OFF}</code>
+              <p class="ax-small ax-muted hint">
+                로컬에서 먼저 해 보려면 <code class="ax-tag">npm run db:up</code> 으로 Postgres 를 띄우고
+                <code class="ax-tag">.env</code> 에 DATABASE_URL 을 채우세요. 쓰는 법은
+                <code class="ax-tag">src/lib/db.ts</code> 에 적혀 있어요.
+              </p>
+            </Fragment>
           )
         }
       </div>
-    </section>
 
-    <section>
-      <h2 class="ax-section-title">다음 단계</h2>
-      <div class="ax-grid ax-grid-3">
+      <div class="ax-grid guides">
         <div class="ax-card">
-          <span class="ax-tag">1</span>
-          <p class="step-t">화면 만들기</p>
-          <p class="ax-caption ax-subtle step-c">src/pages/index.astro</p>
-          <p class="ax-small ax-muted step-d">이 페이지 내용을 바꾸면 돼요.</p>
+          <h3 class="ax-card-title">화면 만들기</h3>
+          <p class="ax-caption ax-subtle guide-code">src/pages/index.astro</p>
+          <p class="ax-small ax-muted guide-desc">
+            이 페이지를 고치거나 새 화면을 추가하세요. 사이드바 메뉴는 src/config/navigation.ts 에 한 줄 더하면 돼요.
+          </p>
         </div>
         <div class="ax-card">
-          <span class="ax-tag">2</span>
-          <p class="step-t">데이터 저장</p>
-          <p class="ax-caption ax-subtle step-c">src/lib/db.ts</p>
-          <p class="ax-small ax-muted step-d">평범한 SQL 을 쓰면 돼요.</p>
-        </div>
-        <div class="ax-card">
-          <span class="ax-tag">3</span>
-          <p class="step-t">배포</p>
-          <p class="ax-caption ax-subtle step-c">/axhub:deploy</p>
-          <p class="ax-small ax-muted step-d">Claude Code 에서 한 줄로 배포해요.</p>
+          <h3 class="ax-card-title">배포하기</h3>
+          <p class="ax-caption ax-subtle guide-code">/axhub:deploy</p>
+          <p class="ax-small ax-muted guide-desc">
+            Claude Code 에서 한 줄로 배포해요. 배포 전에 디자인 규칙 검사가 자동으로 돌아요.
+          </p>
         </div>
       </div>
     </section>
@@ -241,44 +199,22 @@ const rows: [string, string][] = [
     align-items: center;
     gap: 8px;
   }
-  .card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-  }
-  .todo-body {
-    margin-top: 20px;
-  }
-  .todo-form {
-    display: flex;
-    gap: 8px;
-  }
-  .todo-list {
-    list-style: none;
+  .hint {
     margin: 16px 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
   }
-  .todo-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-control);
-    padding: 8px 12px;
+  .guides {
+    margin-top: 16px;
   }
-  .step-t {
-    margin: 12px 0 0;
-    font-weight: 600;
+  @media (min-width: 640px) {
+    .guides {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
-  .step-c {
+  .guide-code {
     margin: 4px 0 0;
     font-family: var(--font-mono);
   }
-  .step-d {
-    margin: 8px 0 0;
+  .guide-desc {
+    margin: 12px 0 0;
   }
 </style>

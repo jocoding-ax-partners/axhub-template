@@ -577,6 +577,21 @@ pre {
   font-weight: 600;
 }
 
+/* 코드 블록 (안내 안에 명령·설정을 보여줄 때) */
+.ax-code {
+  display: block;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  background: var(--bg-muted);
+  color: var(--fg-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  line-height: 1.7;
+  white-space: pre;
+  overflow-x: auto;
+}
+
 /* 아무것도 없을 때 */
 .ax-empty {
   padding: 32px 0;
