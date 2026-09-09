@@ -118,7 +118,7 @@ axhub 에 배포된 앱은 **허브에 "이 사람 누구야?" 라고 다시 묻
 
 ### 이 템플릿에서는
 
-서버(frontmatter / endpoint)는 요청 헤더를 직접 볼 수 있어요. `src/lib/axhub-server.ts` 의 `me(Astro.request)` 가 위 헤더를 읽어 객체로 돌려줘요. 허브 호출도, SDK 도 필요 없어요. 원본 헤더를 그대로 보고 싶으면 `/ssr` 페이지를 여세요.
+서버(frontmatter / endpoint)는 요청 헤더를 직접 볼 수 있어요. `src/lib/axhub-server.ts` 의 `me(Astro.request)` 가 위 헤더를 읽어 객체로 돌려줘요. 허브 호출도, SDK 도 필요 없어요.
 
 ```astro
 ---

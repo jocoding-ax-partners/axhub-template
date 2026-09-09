@@ -2,7 +2,7 @@
   "name": "nextjs-axhub",
   "version": "0.1.0",
   "private": true,
-  "description": "axhub \uc704\uc5d0\uc11c \ubc14\ub85c \uad74\ub7ec\uac00\ub294 Next.js 16 + React 19 + Tailwind \ud15c\ud50c\ub9bf",
+  "description": "axhub 위에서 바로 굴러가는 Next.js 16 + React 19 + Tailwind 템플릿",
   "engines": {
     "node": ">=20"
   },
@@ -15,7 +15,8 @@
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d",
-    "db:psql": "docker compose -f docker-compose.dev.yml exec db psql -U postgres -d app"
+    "db:psql": "docker compose -f docker-compose.dev.yml exec db psql -U postgres -d app",
+    "check:design": "bash scripts/check-design.sh"
   },
   "dependencies": {
     "@ax-hub/sdk": "^6.3.0",

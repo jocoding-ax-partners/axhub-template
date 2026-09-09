@@ -3,6 +3,7 @@
 // 연결 문자열은 환경에서 와요:
 //   - 로컬: `npm run db:up` 으로 띄운 Postgres → .env.local 의 DATABASE_URL
 //   - 배포: axhub 가 전용 DB 를 발급하고 DATABASE_URL / DIRECT_DATABASE_URL 을 자동 주입
+//     ⚠️ 기본값은 DB 없음 — axhub.yaml 의 database 선언 주석을 풀어야 발급돼요
 //     (axhub.yaml 의 `database: { engine: postgres }` 선언이 트리거)
 //
 // 두 URL 의 차이:
@@ -15,7 +16,8 @@ import postgres from 'postgres'
 const RUNTIME_URL = process.env.DATABASE_URL ?? ''
 const DIRECT_URL = process.env.DIRECT_DATABASE_URL || RUNTIME_URL
 
-// DATABASE_URL 이 채워졌는지. 로컬에서 docker compose 를 아직 안 띄웠으면 false.
+// DATABASE_URL 이 채워졌는지. 로컬에서 아직 Postgres 를 안 띄웠거나,
+// 배포본에서 axhub.yaml 의 database 선언이 주석 상태면 false.
 export function isDbConfigured(): boolean {
   return Boolean(RUNTIME_URL)
 }
@@ -35,7 +37,7 @@ export function db(): ReturnType<typeof postgres> {
   if (!RUNTIME_URL) {
     throw new Error(
       'DATABASE_URL 이 없어요. 로컬은 `npm run db:up` 으로 Postgres 를 띄운 뒤 ' +
-        '.env.local 에 DATABASE_URL 을 채워 주세요. axhub 로 배포하면 자동 주입돼요.',
+        '.env.local 에 DATABASE_URL 을 채워 주세요. axhub 는 axhub.yaml 의 database 선언 주석을 풀고 다시 배포해야 발급해요.',
     )
   }
   // prepare:false — 일부 연결 풀러(transaction pooling)는 prepared statement 를 지원하지 않아요.

@@ -15,6 +15,7 @@
 // 로컬에서 템플릿을 직접 돌릴 땐 .env.local 의 VITE_APPHUB_* 가 우선해요.
 const API_BASE = import.meta.env.VITE_APPHUB_API_URL || "{{API_BASE}}";
 const APP_SLUG = import.meta.env.VITE_APPHUB_APP_SLUG || "{{APP_SLUG}}";
+const APP_NAME = import.meta.env.VITE_APPHUB_APP_NAME || "{{APP_NAME}}";
 
 // placeholder 가 치환됐거나 env 로 채워졌으면 configured.
 const isSet = (v: string): boolean => Boolean(v) && !v.includes("{{");
@@ -175,5 +176,7 @@ export const axhub = {
   isTenantHostApp,
   fetch: axhubFetch,
   slug: isSet(APP_SLUG) ? APP_SLUG : "",
+  // 상단바에 보여줄 앱 이름. 배포 시 실제 이름으로 치환돼요.
+  name: isSet(APP_NAME) ? APP_NAME : "내 앱",
   isConfigured: isSet(API_BASE) && isSet(APP_SLUG),
 };

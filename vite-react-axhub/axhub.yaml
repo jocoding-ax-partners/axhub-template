@@ -16,3 +16,8 @@ env:
       scope: build
     - name: VITE_APPHUB_TENANT
       scope: build
+
+# 배포 전 검사. 디자인 토큰 규칙을 어기면 여기서 걸려요.
+ci:
+  commands:
+    - bash scripts/check-design.sh
