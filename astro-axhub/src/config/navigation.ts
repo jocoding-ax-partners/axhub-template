@@ -9,7 +9,6 @@ export const ICONS = {
   home: "M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5",
   book: "M4 4.5h6a2 2 0 0 1 2 2V20a2 2 0 0 0-2-2H4zM20 4.5h-6a2 2 0 0 0-2 2V20a2 2 0 0 1 2-2h6z",
   list: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
-  code: "M9 18 3 12l6-6M15 6l6 6-6 6",
 } as const;
 
 export type NavItem = {
@@ -22,5 +21,4 @@ export type NavItem = {
 
 export const NAVIGATION: NavItem[] = [
   { label: "홈", href: "/", icon: ICONS.home },
-  { label: "SSR 데모", href: "/ssr", icon: ICONS.code },
 ];
