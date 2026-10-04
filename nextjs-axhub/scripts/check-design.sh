@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 디자인 토큰 회귀 검사.
 #
-#   bash scripts/check-design.sh              레포 전체 (세 템플릿)
+#   bash scripts/check-design.sh              레포 전체 (모든 템플릿)
 #   bash scripts/check-design.sh <템플릿폴더>  한 템플릿만 (배포 전 ci 용)
 #
 # 잡는 것
@@ -18,9 +18,9 @@ cd "$ROOT"
 
 if [ -n "$SCOPE" ]; then
   DIRS=("$SCOPE")
-elif [ -d vite-react-axhub ] && [ -d nextjs-axhub ]; then
-  # 템플릿 레포 — 세 템플릿을 모두 검사
-  DIRS=(vite-react-axhub nextjs-axhub astro-axhub)
+elif [ -d nextjs-axhub ] && [ -d design ]; then
+  # 템플릿 레포 — 모든 템플릿을 검사
+  DIRS=(nextjs-axhub chatbot-axhub)
 else
   # 앱 안 — 자기 소스만 검사
   DIRS=(.)

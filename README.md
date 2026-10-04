@@ -11,10 +11,11 @@
 | 템플릿 | 언제 쓰면 좋아요 | Stack | 분류 |
 |--------|-----------------|-------|------|
 | [**nextjs-axhub**](./nextjs-axhub) | 풀스택 웹앱 (가장 흔한 선택) | Next 16 + React 19 + Tailwind 3 | 서버 (SSR) |
-| [**vite-react-axhub**](./vite-react-axhub) | 정적 SPA (랜딩, 계산기, 도구) | Vite 7 + React 19 + Tailwind 3 | 브라우저 (정적) |
-| [**astro-axhub**](./astro-axhub) | 콘텐츠 사이트 (블로그, 문서, 랜딩) | Astro 5 SSR + Node | 서버 (SSR) |
+| [**chatbot-axhub**](./chatbot-axhub) | AI 챗봇 (사내 도우미, 상담, Q&A) | Next 16 + Claude (`@anthropic-ai/sdk`) | 서버 (SSR) |
 
-> 3종 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요.
+> 모든 템플릿은 Next.js 하나를 바탕으로 해요. 용도별 템플릿은 화면과 기능만 다르고 뼈대·디자인·배포 방식은 같아요.
+>
+> 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요.
 
 처음이면 **`nextjs-axhub`** 부터 시작하세요. 가장 보편적이고 LLM 도 가장 잘 짜요.
 
@@ -29,10 +30,8 @@ cd my-app
 npm install
 
 # 3) (로컬 테스트용) 환경변수 채우기
-cp .env.example .env.local    # vite / nextjs
-# 또는
-cp .env.example .env          # astro
-# axhub 로 배포하면 이 값들은 자동 주입돼요 (아래 "설정 주입" 참고)
+cp .env.example .env.local
+# 로컬에선 비워 두면 "로컬 실행 중" 으로 동작해요. DB·로그인 값은 axhub 가 채워 줘요 (아래 "설정 주입")
 
 # 4) 로컬 서버 띄우기
 npm run dev
@@ -75,16 +74,16 @@ npm run dev
 
 ```bash
 # 한 번만: axhub 콘솔에서 앱 등록 후 슬러그 복사
-axhub apps                                            # 내 앱 목록
-axhub deploy create --app my-app-slug --branch main   # 배포
-axhub deploy status dep_xxxxx --watch                 # 진행 상황 보기
+axhub apps list                                   # 내 앱 목록
+axhub deploy create --app my-app-slug --execute   # 배포 (--execute 없으면 미리보기)
+axhub deploy status --app my-app-slug --watch     # 진행 상황 보기
 ```
 
 자세한 건 [axhub 가이드](https://github.com/jocoding-ax-partners/axhub) 참고.
 
 ## 설정 주입 (axhub 가 알아서 채워줘요)
 
-axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placeholder 가 **빌드 시점에 실제 값으로 치환**돼요:
+axhub bootstrap 으로 앱을 만들면, 저장소에 올리기 전에 템플릿 소스의 `{{...}}` placeholder 가 **실제 값으로 치환**돼요 (DB 주소처럼 배포 때 넣어 주는 값과는 달라요):
 
 | placeholder | 치환값 | 용도 |
 |------|--------|------|
@@ -92,27 +91,29 @@ axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placehold
 | `{{APP_SLUG}}` | 내 앱 슬러그 | 앱 식별자 |
 | `{{TENANT}}` | 내 테넌트 슬러그 | data API 경로 |
 
-로컬에서 직접 돌릴 땐 `.env`(server) / `.env.local`(vite, `VITE_APPHUB_*`) 로 우선 채울 수 있어요.
+로컬에서 직접 돌릴 땐 `.env.local` 로 우선 채울 수 있어요.
 
-> **인증엔 별도 API key 가 필요 없어요.** 방문자 신원은 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요 — 아래 "신뢰 모델" 참고. `VITE_*` 변수는 빌드 결과물에 박히니 시크릿은 절대 넣지 마세요.
+> **인증엔 별도 API key 가 필요 없어요.** 방문자 신원은 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요 — 아래 "신뢰 모델" 참고. 챗봇처럼 외부 AI 를 부르는 템플릿만 그 서비스의 키(`ANTHROPIC_API_KEY`)를 직접 넣어요.
 
 ## 기여하기
 
 새 템플릿을 추가하고 싶으세요?
 
-1. repo 루트에 **`Dockerfile`** 이 있어 `docker build` 로 떠야 해요 (axhub 는 framework 자동생성 안 함 — Dockerfile 필수).
-2. 다음 파일이 모두 있어야 해요:
+1. `nextjs-axhub` 를 복사해서 시작해요. 디자인 파일을 받도록 `scripts/sync-design.mjs` 와 `scripts/check-design.sh` 에 폴더를 추가해요.
+2. repo 루트에 **`Dockerfile`** 이 있어 `docker build` 로 떠야 해요 (axhub 는 framework 자동생성 안 함 — Dockerfile 필수).
+3. 다음 파일이 모두 있어야 해요:
    - `Dockerfile`, `axhub.yaml`, `.env.example`, `lib/axhub.*` (또는 동등 위치)
    - `CLAUDE.md`, `AGENTS.md`
    - `prompts/getting-started.md`
    - 한국어 `README.md`
-3. 모든 문서는 한국어, vibe coder 친화적인 톤으로.
-4. PR 보내주세요.
+4. 모든 문서는 한국어, vibe coder 친화적인 톤으로.
+5. axhub 백엔드 템플릿 카탈로그(`templates` 표)에 폴더 이름으로 등록해야 앱 만들기 화면에 떠요.
+6. PR 보내주세요.
 
 ## FAQ
 
-**Q. 템플릿이 왜 3개뿐?**
-입문 vibe coder 가 헷갈리지 않게 가장 보편적인 3종(풀스택 Next / 정적 Vite SPA / 콘텐츠 Astro)만 유지해요. 초기엔 express/hono/remix 도 있었지만 정리했어요.
+**Q. 왜 프레임워크가 Next.js 하나뿐?**
+입문 vibe coder 가 프레임워크를 고르느라 헷갈리지 않게 Next.js 하나로 모았어요. 대신 "무엇을 만들지"(웹앱·챗봇 …)로 템플릿을 나눠요. 예전엔 Vite SPA·Astro 도 있었지만 정리했어요.
 
 **Q. 다른 framework 도 axhub 에 올릴 수 있나요?**
 네. repo 루트에 `Dockerfile` 만 있으면 돼요. axhub 가 그걸로 빌드해요. (`axhub.yaml` 로 포트/헬스체크와 Dockerfile 우선순위 조정)
@@ -124,15 +125,14 @@ axhub bootstrap 으로 앱을 만들면, 템플릿 소스의 `{{...}}` placehold
 각 템플릿의 `CLAUDE.md` / `AGENTS.md` 에 명확히 금지돼 있어요.
 AI 가 무시하면 그 규칙을 다시 보여주면서 "이거 어겼다" 라고 알려주세요.
 
-## axhub.ts 신뢰 모델 (3종 공통)
+## axhub.ts 신뢰 모델 (모든 템플릿 공통)
 
-**방문자 신원은 3종 모두 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요.** 허브 API 에 "이 사람 누구야?" 라고 다시 묻지 않아요 — 허브 로그인 쿠키는 `axhub.ai` 계열 주소에만 실리기 때문에, 퍼블릭 앱(`{앱}.axhub.app`)·커스텀 도메인에서 허브 `/api/v1/me` 나 `sdk.identity.me` 로 방문자를 알아내는 방식은 구조적으로 안 돼요. 헤더 계약·로그인/로그아웃·익명 처리 규칙은 각 템플릿 README 의 "로그인 사용자 알기 (axhub 신원 계약)" 절에 있어요. 정적 API key 는 안 써요.
+**방문자 신원은 모든 템플릿에서 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요.** 허브 API 에 "이 사람 누구야?" 라고 다시 묻지 않아요 — 허브 로그인 쿠키는 `axhub.ai` 계열 주소에만 실리기 때문에, 퍼블릭 앱(`{앱}.axhub.app`)·커스텀 도메인에서 허브 `/api/v1/me` 나 `sdk.identity.me` 로 방문자를 알아내는 방식은 구조적으로 안 돼요. 헤더 계약·로그인/로그아웃·익명 처리 규칙은 각 템플릿 README 의 "로그인 사용자 알기 (axhub 신원 계약)" 절에 있어요. 정적 API key 는 안 써요.
 
 | 템플릿 | 위치 | 분류 | 신원 (`me()`) | 허브 SDK/API 직접 호출 |
 |--------|------|------|----------------|----------------|
 | nextjs-axhub | `lib/axhub-server.ts` | server | `headers()` 에서 `X-AxHub-*` 읽기 | `makeAxhub` / `makeGateway` / `queryConnector` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
-| astro-axhub | `src/lib/axhub-server.ts` | server | `Astro.request.headers` 에서 `X-AxHub-*` 읽기 | `makeAxhub` / `makeTenant` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
-| **vite-react-axhub** | `src/lib/axhub.ts` + `nginx.conf` | browser | 파드 nginx 의 `/__axhub/me` 가 헤더를 JSON 으로 되돌려 줌 → `axhub.me()` | `axhub.fetch` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
+| chatbot-axhub | `lib/axhub-server.ts` (+ `lib/ai.ts`) | server | nextjs 와 같아요 | nextjs 와 같아요. Claude 호출은 `lib/ai.ts` — 서버에서만 |
 
 **규칙:** 빌드 결과물엔 어떤 시크릿도 박지 않아요. 서버 전용 SDK 는 절대 클라이언트 번들에 넣지 마세요. 서버 템플릿에서 SDK 를 쓸 땐 요청별로 factory 를 새로 만들고 모듈 레벨 client 캐싱을 하지 않아요. `/__axhub/auth/*` 는 플랫폼 예약 경로라 앱 라우트로 쓸 수 없어요.
 

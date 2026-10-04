@@ -67,7 +67,87 @@ Tailwind 는 배치(flex·grid·gap·mt)에 쓰고, 색과 크기는 위 조각�
 - 좁은 화면 메뉴(서랍)는 `components/Nav.tsx` 의 `MobileNav` 예요. 메뉴 항목은 사이드바와 같은 `config/navigation.ts` 를 써요.
 - 없는 주소는 `app/not-found.tsx`, 화면 오류는 `app/error.tsx` 가 보여줘요. 데이터가 없을 때는 `notFound()` 를 불러요.
 
+## 이 템플릿 = AI 챗봇
+
+사용자는 "말투를 바꿔줘 / 우리 회사 규정만 답하게 해줘 / 대화 저장되게" 처럼 **결과만** 말해요. 고칠 곳은 정해져 있어요.
+
+| 요청 | 고칠 곳 |
+|---|---|
+| 이름·인사·예시 질문·역할·말투·금지 주제 | `config/assistant.ts` 만 |
+| 화면 뼈대·대화 상태(보내기·다시 생성·멈추기·대화 목록) | `components/chat/ChatApp.tsx` |
+| 말 한 줄(말풍선·마크다운·복사·코드 복사) | `components/chat/Message.tsx` |
+| 입력창(자동 높이·Enter/Shift+Enter) | `components/chat/Composer.tsx` |
+| 스크롤 규칙(맨 아래 따라가기·아래로 버튼) | `components/chat/MessageList.tsx` |
+| 사이드바(새 대화·지난 대화·다른 화면 메뉴·로그인) | `components/chat/Sidebar.tsx` |
+| 크기·간격·고정 배치 | `app/chat.css` |
+| 브라우저 저장(localStorage)·스트림 읽기 | `lib/chat-client.ts` |
+| 모델·답 길이·Claude 옵션 | `app/api/chat/route.ts` (모델 기본값은 `lib/ai.ts`, 바꿀 땐 env `AI_MODEL` 우선) |
+
+### C1. Claude 는 서버에서만
+- `@anthropic-ai/sdk` 와 `lib/ai.ts` 는 Route Handler·Server Component·Server Action 에서만 import 해요.
+- ❌ `"use client"` 파일에서 import — API 키가 브라우저 번들로 새요.
+- 키는 코드에 적지 않아요. 로컬은 `.env.local`, 배포는 아래 D5 대로 `axhub env set ANTHROPIC_API_KEY --secret`.
+- `ANTHROPIC_API_KEY` 는 `axhub.yaml` 에 **optional** 로 선언돼 있어요. required 로 바꾸지 마세요 — 키 없이 첫 배포가 막혀요.
+
+### C1-A. 키는 두 가지 — 기본은 Anthropic 키, AXRouter 는 선택
+| | 기본 ① Anthropic 키 | 선택 ② 회사 AXRouter |
+|---|---|---|
+| 키 | `sk-ant-…` (console.anthropic.com) | `ax-…` (`axhub axrouter keys issue --name "내 챗봇"`) |
+| 넣는 변수 | `ANTHROPIC_API_KEY` | `ANTHROPIC_API_KEY` + `ANTHROPIC_BASE_URL=https://axrouter.ai` |
+| 비용·관리 | 키 주인 Anthropic 계정 | 회사 AXRouter 한도·가드레일, 사용량은 관리자 콘솔 |
+| 코드 차이 | 없음 | 없음 — SDK 가 `ANTHROPIC_BASE_URL` 을 알아서 읽어요 |
+
+- **AXRouter 란** axhub 의 회사 AI 통로예요. 회사가 등록한 공급사 키(BYOK)로 대신 호출하고, 누가 얼마나 썼는지·한도·허용 모델·민감정보 탐지를 관리자 콘솔(AXRouter 메뉴)에서 모아 봐요. 회사 관리자가 AXRouter 를 켜고 Anthropic 공급사 키를 연결해 둬야 쓸 수 있어요.
+- **발급:** `axhub axrouter keys issue --name "<이름>" [--purpose "<용도>"] [--tenant <회사 슬러그>]` — 키 값은 이때 한 번만 보여요. 목록 `axhub axrouter keys list`, 폐기 `axhub axrouter keys revoke <key_id> --execute`. 관리자 콘솔 › AXRouter › API 키 에서도 발급돼요.
+- **배포 앱에 넣기:** `ANTHROPIC_API_KEY` 는 `--secret`, `ANTHROPIC_BASE_URL` 은 평문으로 `axhub env set` 후 재배포.
+- **거절되면:** AXRouter 가드레일이 모델을 허용하지 않거나 한도를 넘으면 403/429 가 나요. 코드를 고치지 말고 관리자에게 허용 모델·한도를 확인하게 하거나 `AI_MODEL` 을 허용된 모델로 바꿔요.
+- 사용자가 AXRouter 를 원한다고 말하기 전에는 ② 로 바꾸지 마세요. 기본은 ① 이에요.
+
+### C2. 모델·옵션
+- 모델 이름은 `lib/ai.ts` 의 `AI_MODEL` 하나로만 정해요 (env `AI_MODEL`, 기본 `claude-sonnet-5-5`). 다른 곳에 모델 이름을 박지 마세요.
+- `route.ts` 는 Opus·Sonnet 5.5 계열에 `fallbacks: "default"` (거절 시 다른 모델로 자동 재답) 와 `effort: "low"` (빠른 답) 를 붙여요. Haiku 는 effort 를 받지 않아 빠져요.
+- `temperature`·`top_p`·`budget_tokens` 는 최신 모델에서 400 오류예요. 넣지 마세요.
+- 오류는 `instanceof Anthropic.AuthenticationError` 처럼 **종류로** 나눠요. 메시지 문자열 비교 금지.
+
+### C3. 대화 저장하기 — 여러 기기에서 이어 보기 (요청이 있을 때만)
+기본은 이 브라우저의 localStorage 예요 (`lib/chat-client.ts`, 로그인한 사람마다 따로). DB 는 기본으로 꺼져 있어요.
+"다른 컴퓨터에서도 내 대화가 보이게" 같은 요청이 오면 **아래 한 가지 방식으로만** 옮겨요. 화면(`components/chat/*`)은 고치지 않아요.
+
+**① DB 켜기** — README "DB 켜기" 순서 그대로. 로컬은 `npm run db:up` + `.env.local` 의 `DATABASE_URL` 주석 해제,
+배포는 `axhub.yaml` 의 `database:` 두 줄 주석 해제 후 재배포. 사용자에게 이 두 가지를 해야 한다고 먼저 알려요.
+
+**② 테이블 하나** — `lib/db.ts` 의 `ensureSchema()` 에 추가. 대화 한 개 = 한 줄, 말 목록은 `turns` 에 브라우저 모양 그대로(JSON).
+```sql
+CREATE TABLE IF NOT EXISTS chat_conversations (
+  id         text PRIMARY KEY,               -- 브라우저가 만든 대화 id 그대로
+  user_key   text NOT NULL,                  -- 대화 주인 (me().user_id)
+  title      text NOT NULL,
+  turns      jsonb NOT NULL,                 -- Turn[] (lib/chat-client.ts)
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS chat_conversations_user ON chat_conversations (user_key, updated_at DESC);
+```
+
+**③ API 하나 — `app/api/conversations/route.ts`** (서버 전용)
+- 주인 판정: `const v = await me()` → `isAxhubConfigured()` 가 false(로컬)면 `'local-dev'`, 배포에서 `v.authenticated` 가 false 면 **401** (익명 대화를 한 통에 섞지 않게), 아니면 `v.user_id`.
+- `GET` → 내 대화 목록 `SELECT id, title, turns, updated_at FROM chat_conversations WHERE user_key = ${key} ORDER BY updated_at DESC LIMIT 50`
+- `PUT` (body = Conversation 하나) → `INSERT … ON CONFLICT (id) DO UPDATE SET title=…, turns=…, updated_at=now() WHERE chat_conversations.user_key = ${key}` (남의 대화 id 로 덮어쓰기 방지)
+- `DELETE ?id=` → `DELETE FROM chat_conversations WHERE id = ${id} AND user_key = ${key}`
+- 모든 쿼리는 `db()` tagged-template, 첫 호출 전에 `await ensureSchema()`.
+
+**④ 브라우저 쪽은 `lib/chat-client.ts` 의 두 함수만 바꿔요**
+- `loadConversations` → `GET /api/conversations` (async 로 바뀌니 `ChatApp.tsx` 의 첫 `useEffect` 에서 `await` 해서 `setConversations`)
+- `saveConversations` → 바뀐 대화만 `PUT` (지금처럼 잠깐 멈췄을 때 한 번 — 답을 받는 중 조각마다 보내지 않기), 삭제는 `DELETE`
+- 실패해도 대화는 계속되게 try/catch, 화면에는 "저장하지 못했어요" 정도만.
+
+**⑤ 확인** — 로컬에서 대화 → 새로고침 → 남아 있음, `npm run db:psql` 로 `SELECT id, title FROM chat_conversations;` 에 보임. 배포 뒤엔 다른 브라우저로 로그인해서 같은 대화가 보이는지.
+
+### C4. 자료를 근거로 답하게 하기
+- 짧은 규정·FAQ 는 `systemPrompt` 에 그대로 붙이면 돼요 (수십 쪽 이내).
+- 길면 파일을 `data/` 폴더에 두고 `route.ts` 에서 읽어 system 에 붙여요. 같은 자료를 매번 보내면 `cache_control: { type: 'ephemeral' }` 로 캐시해 비용을 줄여요.
+
 ## Stack
+Claude (`@anthropic-ai/sdk`, `lib/ai.ts`) · 마크다운 렌더 (`react-markdown` + `remark-gfm`) ·
 Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ ·
 **데이터는 표준 PostgreSQL** (`lib/db.ts`, `DATABASE_URL`) · **인증/식별 · 외부 connector 는 `@ax-hub/sdk 6.x`** (`lib/axhub-server.ts`).
 
@@ -82,7 +162,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 3. **No unprompted refactor** — X 요청에 Y / Z 같이 "개선" 금지. 변경한 모든 line 이 X 와 직접 관련.
 4. **Honest failure** — 못 만들면 plainly 말해요. "아직 안 풀렸어요. 시도: A, B. 모름: C." 가짜 성공 보고 금지.
 5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요.
-   (단, `@ax-hub/sdk` 와 `postgres` 는 이미 설치돼 있으니 다시 설치 금지.)
+   (단, `@ax-hub/sdk` · `postgres` · `@anthropic-ai/sdk` · `react-markdown` · `remark-gfm` 은 이미 설치돼 있으니 다시 설치 금지.)
 
 ## 데이터 = 표준 PostgreSQL (`lib/db.ts`)
 

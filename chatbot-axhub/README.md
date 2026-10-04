@@ -1,6 +1,7 @@
-# nextjs-axhub
+# chatbot-axhub
 
-axhub 위에서 바로 굴러가는 **Next.js 16 + React 19 + Tailwind 3** 템플릿이에요.
+axhub 위에서 바로 굴러가는 **AI 챗봇** 템플릿이에요. **Next.js 16 + React 19 + Tailwind 3** 위에 Claude 대화 화면이 이미 붙어 있어요.
+API 키만 넣으면 바로 대화가 되고, 챗봇의 성격·말투는 `config/assistant.ts` 한 파일에서 바꿔요.
 **Claude Code** 로 바이브코딩하면서 axhub 에 한 줄 명령으로 배포할 수 있게 미리 세팅돼 있어요.
 
 > **axhub 로 할 수 있는 것** — DB · 파일 저장 · 알림/메일 · 웹훅 · 권한·공개 · 스테이징 · 도메인 · 로그·되돌리기 를 켜는 법은 [AXHUB.md](./AXHUB.md) 한 곳에 모아 뒀어요. 기능을 직접 만들기 전에 먼저 보세요.
@@ -14,22 +15,64 @@ axhub 위에서 바로 굴러가는 **Next.js 16 + React 19 + Tailwind 3** 템�
 
 ```bash
 # 1) 이 템플릿만 내 컴퓨터로 가져오기 (npm 깔려 있어야 함, Node 20+ 권장)
-npx degit jocoding-ax-partners/axhub-template/nextjs-axhub my-app
+npx degit jocoding-ax-partners/axhub-template/chatbot-axhub my-app
 cd my-app
 
 # 2) 의존성 설치
 npm install
 
 # 3) 환경변수 파일 만들기 (처음 한 번)
-npm run setup                 # .env.example → .env.local 복사. DB 는 기본으로 꺼져 있어요 (Docker 필요 없음)
+npm run setup                 # .env.example → .env.local 복사. 챗봇은 DB 없이 돌아요 (Docker 필요 없음)
 # DB·파일 저장·알림 같은 axhub 기능은 필요할 때 켜요 → AXHUB.md
+
+# 3-1) AI 키 넣기 — .env.local 의 ANTHROPIC_API_KEY 에 붙여 넣어요
+#      발급: https://console.anthropic.com/settings/keys  (키가 없으면 화면이 설정 안내를 보여줘요)
+#      회사 AXRouter 를 쓰고 싶으면 아래 "2-2. 회사 AXRouter 로 쓰기 (선택)" 를 보세요.
 
 # 4) 로컬 서버 띄우기
 npm run dev
 # http://localhost:3000 에 접속
 ```
 
-## 2. 바이브코딩 흐름
+## 2. 챗봇 고치기
+
+| 하고 싶은 것 | 고칠 곳 |
+|---|---|
+| 챗봇 이름·인사·예시 질문 | `config/assistant.ts` |
+| 역할·말투·답하면 안 되는 주제 | `config/assistant.ts` 의 `systemPrompt` |
+| 쓰는 모델 (더 깊게·더 싸게) | 환경변수 `AI_MODEL` (기본 `claude-sonnet-5-5`) |
+| 화면 뼈대·대화 흐름 (보내기·다시 생성·대화 목록) | `components/chat/ChatApp.tsx` |
+| 말 한 줄 모양 · 입력창 · 사이드바 | `components/chat/Message.tsx` · `Composer.tsx` · `Sidebar.tsx` |
+| 크기·간격·폭 | `app/chat.css` (대화 폭 `--chat-width`, 사이드바 폭 `--chat-sidebar`) |
+| Claude 호출 방식 (답 길이·옵션) | `app/api/chat/route.ts` |
+
+동작 방식은 단순해요. 브라우저가 대화 전체를 `POST /api/chat` 으로 보내면, 서버가 Claude 를 불러 답을 글자 단위로 흘려 보내요.
+API 키는 서버에만 있고 브라우저로 나가지 않아요.
+
+- **대화 목록은 이 브라우저에 저장돼요** (localStorage, 로그인한 사람마다 따로). 새로고침해도 남지만 다른 기기와는 공유되지 않아요. 여러 기기에서 이어 보려면 Claude Code 에 "대화를 DB 에 저장해줘" 라고 부탁하세요 (AGENTS.md 의 "대화 저장하기").
+- **기본 채팅 동작이 들어 있어요.** 사이드바·상단바·입력창은 제자리에 고정되고 대화만 스크롤돼요. 답을 받는 동안 맨 아래를 따라가고, 위로 올려 읽으면 멈추고 "아래로" 버튼이 떠요. Enter 보내기 · Shift+Enter 줄바꿈 · Esc 멈추기, 복사 · 다시 생성 · 오류 시 다시 시도, 코드 복사, 휴대폰에선 사이드바가 서랍으로 열려요.
+- **답을 거절하면** (안전 필터) 자동으로 다른 Claude 모델이 이어서 답해요 (`fallbacks: "default"`). 그래도 거절되면 화면에 안내가 떠요.
+
+## 2-2. 회사 AXRouter 로 쓰기 (선택)
+
+기본은 개인 Anthropic 키예요. 회사가 axhub **AXRouter** 를 켜 두었다면 회사 키로 바꿔 쓸 수 있어요.
+AXRouter 는 회사의 AI 호출을 한 통로로 모아, 회사가 산 공급사 키로 대신 호출하고 사용량·한도·허용 모델·민감정보 탐지를 관리자 콘솔에서 관리해요.
+코드는 그대로이고 환경변수 두 개만 바꾸면 돼요.
+
+```bash
+# 1) 키 발급 — 키 값은 이때 한 번만 보여요. 회사에 여러 곳 속해 있으면 --tenant <회사 슬러그>
+axhub axrouter keys issue --name "내 챗봇" --purpose "chatbot-axhub"
+
+# 2) .env.local
+ANTHROPIC_API_KEY=ax-...
+ANTHROPIC_BASE_URL=https://axrouter.ai
+```
+
+- 키 목록은 `axhub axrouter keys list`, 폐기는 `axhub axrouter keys revoke <key_id> --execute` 예요. 관리자 콘솔 › AXRouter › API 키 에서도 발급할 수 있어요.
+- 회사 가드레일이 모델을 허용하지 않거나 한도를 넘으면 답 대신 오류가 떠요. 관리자에게 허용 모델·한도를 확인하거나 `AI_MODEL` 을 허용된 모델로 바꿔요.
+- 화면 제목 아래에 "회사 AXRouter 경유" 가 보이면 제대로 연결된 거예요.
+
+## 2-1. 바이브코딩 흐름
 
 1. Claude Code 를 열어요.
 2. "메인 페이지에 입력 폼이랑 결과 카드 넣어줘" 같은 자연어 요청을 던져요.
@@ -83,7 +126,7 @@ npm run dev
 ## 4. 데이터 저장 (표준 PostgreSQL)
 
 이 앱의 데이터는 **이 앱 전용 PostgreSQL** 에 저장해요. `lib/db.ts` 가 단일 진입점이고, 평범한 SQL 을 쓰면 돼요.
-**DB 는 기본으로 꺼져 있어요.** 켜는 순서(로컬·배포)는 [AXHUB.md §3 DB 켜기](./AXHUB.md#3-db-켜기) 를 따라요. 로컬은 `npm run db:up` + `.env.local` 의 `DATABASE_URL` 주석 해제, 배포는 `axhub.yaml` 의 `database:` 주석 해제 후 다시 배포 → axhub 가 `DATABASE_URL` 을 자동으로 넣어 줘요.
+**DB 는 기본으로 꺼져 있어요** — 챗봇은 DB 없이 돌아요. 대화를 여러 기기에서 이어 보거나 데이터를 저장할 때만 켜요. 켜는 순서는 [AXHUB.md §3 DB 켜기](./AXHUB.md#3-db-켜기).
 
 ```ts
 // 예: Server Action / Route Handler 안에서
@@ -218,14 +261,27 @@ axhub deploy logs --app my-app-slug --follow      # 앱 로그 (안 뜰 때 원�
 | `APPHUB_API_URL` | Hub API origin (`{{API_BASE}}`) — 로그인/gateway |
 | `APPHUB_APP_SLUG` | 내 앱 슬러그 (`{{APP_SLUG}}`) |
 | `APPHUB_TENANT` | 내 테넌트 슬러그 (`{{TENANT}}`) |
+| `ANTHROPIC_API_KEY` | **직접 넣어요.** Claude API 키. 로컬은 `.env.local`, 배포는 아래 명령 |
+| `AI_MODEL` | 선택. 쓸 모델 (기본 `claude-sonnet-5-5`) |
+| `ANTHROPIC_BASE_URL` | 선택. 회사 AXRouter 를 쓸 때 `https://axrouter.ai` (§2-2) |
 
-`DATABASE_URL`/`DIRECT_DATABASE_URL` 은 DB 를 켜고 배포하면 axhub 가 **자동으로 넣어 줘요.** `APPHUB_*` 값은 axhub 로 앱을 만들 때(bootstrap) 코드의 `{{...}}` 자리에 **미리 채워져요** — 템플릿을 직접 내려받아 올렸다면 `axhub env set` 으로 넣어요. 로컬은 비워 두면 "로컬 실행 중" 으로 동작해요. axhub 연결에는 API key 가 없어요 — 인증은 들어온 요청의 세션 쿠키 포워딩으로.
+배포한 앱에 AI 키 넣기 (값은 stdin 으로만 — 명령행에 남지 않게):
+
+```bash
+printf %s "$ANTHROPIC_API_KEY" | axhub env set ANTHROPIC_API_KEY --app <앱 슬러그> --secret --from-stdin --stage runtime
+axhub deploy create --app <앱 슬러그> --execute     # 넣은 뒤 다시 배포해야 반영돼요
+```
+
+`DATABASE_URL`/`DIRECT_DATABASE_URL` 은 DB 를 켜고 배포하면 axhub 가 **자동으로 넣어 줘요.** `APPHUB_*` 값은 axhub 로 앱을 만들 때(bootstrap) 코드의 `{{...}}` 자리에 **미리 채워져요** — 템플릿을 직접 내려받아 올렸다면 `axhub env set` 으로 넣어요. 로컬은 비워 두면 "로컬 실행 중" 으로 동작해요. axhub 연결에는 API key 가 없어요 — 직접 넣는 키는 `ANTHROPIC_API_KEY` 하나예요.
 
 ## 7. 자주 막히는 곳
 
 | 증상 | 해결 |
 |------|------|
 | `npm install` 실패 | Node 버전 20+ 인지 `node -v` 확인 |
+| 화면에 "AI 키 넣기" 만 보여요 | `ANTHROPIC_API_KEY` 가 없어요. 로컬은 `.env.local` 에 넣고 `npm run dev` 재시작, 배포 앱은 §6 명령 후 재배포 |
+| 답 대신 "(오류: API 키가 올바르지 않아요…)" | 키를 다시 복사해 넣어요. 앞뒤 공백이 섞이기 쉬워요 |
+| "(오류: 모델을 찾을 수 없어요…)" | `AI_MODEL` 철자 확인. 비워두면 기본 모델을 써요 |
 | DB 연결 실패 (`ECONNREFUSED ... 5432`) | Docker Desktop 실행 확인 후 `npm run db:up` |
 | `db:up` 이 `port is already allocated` | 5432 를 다른 Postgres 가 쓰는 중 — `docker-compose.dev.yml` 의 ports 를 `"5433:5432"` 로 바꾸고 `.env.local` 의 DATABASE_URL 포트도 5433 으로 |
 | 테이블/데이터가 꼬임 | `npm run db:reset` — ⚠️ 로컬 데이터 전부 삭제돼요 |
@@ -248,6 +304,8 @@ axhub deploy logs --app my-app-slug --follow      # 앱 로그 (안 뜰 때 원�
 ## 신뢰 모델 (이 템플릿)
 
 이 (Next.js) 템플릿은 **server-side**.
+
+- **AI**: `lib/ai.ts` 와 `app/api/chat/route.ts` 가 서버에서만 Claude 를 불러요. `ANTHROPIC_API_KEY` 는 브라우저로 나가지 않아요.
 
 - **데이터**: `lib/db.ts` 의 `db()` / `ensureSchema()` 가 표준 PostgreSQL 에 붙어요. `DATABASE_URL`(런타임, `prepare:false`) ·
   `DIRECT_DATABASE_URL`(마이그레이션). 로컬은 docker compose, 배포는 axhub 가 전용 DB 발급 + 주입.
