@@ -23,18 +23,18 @@ export function SideNav() {
  * 열려 있는 동안 뒤 화면은 스크롤되지 않고, 바깥 누르기 · Esc · 메뉴 이동으로 닫혀요.
  */
 export function MobileNav({ appName, account }: { appName: string; account?: ReactNode }) {
-  const [open, setOpen] = useState(false)
   const path = usePathname()
-
-  // 다른 화면으로 이동하면 닫아요
-  useEffect(() => setOpen(false), [path])
+  // 서랍을 연 화면의 주소를 기억해요. 다른 화면으로 이동하면 주소가 달라져 저절로 닫혀요.
+  const [openedAt, setOpenedAt] = useState<string | null>(null)
+  const open = openedAt === path
+  const setOpen = (next: boolean) => setOpenedAt(next ? path : null)
 
   // 열려 있는 동안: 뒤 화면 스크롤 막기 + Esc 로 닫기
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpenedAt(null)
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev

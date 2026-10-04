@@ -59,6 +59,11 @@ export function newId(): string {
     : Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
+/** 지금 시각(ms). 보내기·다시 생성 같은 이벤트 처리 중에만 불러요 — 화면을 그리는 중엔 부르지 않아요. */
+export function nowMs(): number {
+  return Date.now()
+}
+
 /** 첫 질문으로 대화 제목을 만들어요. */
 export function titleFrom(text: string): string {
   const t = text.replace(/\s+/g, ' ').trim()
