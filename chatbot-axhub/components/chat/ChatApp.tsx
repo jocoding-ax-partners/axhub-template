@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import {
   loadConversations,
   newId,
+  nowMs,
   saveConversations,
   storageKey,
   streamChat,
@@ -42,11 +43,30 @@ type Props = {
   setup?: ReactNode
 }
 
-export function ChatApp({ appName, assistantName, greeting, suggestions, modelLabel, userKey, visitor, setup }: Props) {
-  const key = storageKey(userKey)
-  const [conversations, setConversations] = useState<Conversation[]>([])
+const subscribeNothing = () => () => {}
+
+export function ChatApp(props: Props) {
+  // 서버가 그린 첫 화면과 브라우저의 첫 화면이 같아야 해서(hydration), 저장된 대화는
+  // 브라우저에서 다시 그릴 때 읽어요. inBrowser 가 true 로 바뀌면 ChatScreen 을 새로 만들어
+  // 그때 localStorage 의 대화 목록으로 시작해요.
+  const inBrowser = useSyncExternalStore(subscribeNothing, () => true, () => false)
+  const key = storageKey(props.userKey)
+  return <ChatScreen key={inBrowser ? key : 'server'} storage={inBrowser ? key : null} {...props} />
+}
+
+function ChatScreen({
+  appName,
+  assistantName,
+  greeting,
+  suggestions,
+  modelLabel,
+  visitor,
+  setup,
+  storage,
+}: Props & { storage: string | null }) {
+  // storage 가 null 이면 서버에서 그리는 중 — 저장소를 읽지도 쓰지도 않아요.
+  const [conversations, setConversations] = useState<Conversation[]>(() => (storage ? loadConversations(storage) : []))
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [followKey, setFollowKey] = useState('init')
   // 사이드바: 'auto' 는 넓은 화면에선 열림, 좁은 화면에선 닫힘 (CSS 가 정해요). 누르면 true/false 로 고정.
@@ -59,16 +79,11 @@ export function ChatApp({ appName, assistantName, greeting, suggestions, modelLa
 
   // ── 저장소 ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    setConversations(loadConversations(key))
-    setLoaded(true)
-  }, [key])
-
-  useEffect(() => {
-    if (!loaded) return
+    if (!storage) return
     // 답을 받는 중엔 조각마다 저장하지 않고, 잠깐 멈췄을 때 한 번에 저장해요.
-    const timer = setTimeout(() => saveConversations(key, conversations), busy ? 1000 : 150)
+    const timer = setTimeout(() => saveConversations(storage, conversations), busy ? 1000 : 150)
     return () => clearTimeout(timer)
-  }, [conversations, loaded, key, busy])
+  }, [conversations, storage, busy])
 
   // ── 대화 조작 ─────────────────────────────────────────────────────────────
   const updateConversation = useCallback((id: string, fn: (c: Conversation) => Conversation) => {
@@ -111,7 +126,7 @@ export function ChatApp({ appName, assistantName, greeting, suggestions, modelLa
 
   function send(text: string) {
     if (busy) return
-    const now = Date.now()
+    const now = nowMs()
     const userTurn: Turn = { id: newId(), role: 'user', content: text }
     const answer: Turn = { id: newId(), role: 'assistant', content: '' }
 
@@ -138,7 +153,7 @@ export function ChatApp({ appName, assistantName, greeting, suggestions, modelLa
     if (lastUser < 0) return
     const history = active.turns.slice(0, lastUser + 1).filter((t) => !(t.role === 'assistant' && (t.error || !t.content)))
     const answer: Turn = { id: newId(), role: 'assistant', content: '' }
-    updateConversation(active.id, (c) => ({ ...c, turns: [...c.turns.slice(0, lastUser + 1), answer], updatedAt: Date.now() }))
+    updateConversation(active.id, (c) => ({ ...c, turns: [...c.turns.slice(0, lastUser + 1), answer], updatedAt: nowMs() }))
     setFollowKey(answer.id)
     void run(active.id, history, answer.id)
   }

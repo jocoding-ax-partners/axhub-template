@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect } from 'react'
 
 /**
@@ -24,9 +25,9 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           <button type="button" className="ax-btn ax-btn-primary" onClick={reset}>
             다시 시도
           </button>
-          <a className="ax-btn ax-btn-ghost" href="/">
+          <Link className="ax-btn ax-btn-ghost" href="/">
             홈으로
-          </a>
+          </Link>
         </div>
       </section>
     </div>
