@@ -1,0 +1,36 @@
+version: axhub/v1
+name: chatbot-axhub
+# DB 가 필요하면 아래 주석을 해제하세요. 배포 시 전용 PostgreSQL 을 발급하고
+# DATABASE_URL / DIRECT_DATABASE_URL 을 파드에 자동 주입해요.
+# database:
+#   engine: postgres
+runtime:
+  port: 3000
+  health_path: /healthz
+build:
+  strategy: auto
+  framework: nextjs
+  dockerfile: Dockerfile
+  deploy_method: docker
+env:
+  optional:
+    - name: APPHUB_API_URL
+      scope: runtime
+    - name: APPHUB_APP_SLUG
+      scope: runtime
+    - name: APPHUB_TENANT
+      scope: runtime
+    # Claude API 키. 값은 여기 적지 말고 `axhub env set ... --secret` 으로 넣어요.
+    # required 로 두면 키 없이는 첫 배포가 막혀서 optional 로 둬요 — 키가 없으면 화면이 설정 안내를 보여줘요.
+    - name: ANTHROPIC_API_KEY
+      scope: runtime
+    - name: AI_MODEL
+      scope: runtime
+    # 회사 AXRouter 를 거칠 때만 https://axrouter.ai (선택)
+    - name: ANTHROPIC_BASE_URL
+      scope: runtime
+
+# 배포 전 검사. 디자인 토큰 규칙을 어기면 여기서 걸려요.
+ci:
+  commands:
+    - bash scripts/check-design.sh

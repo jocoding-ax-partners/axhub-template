@@ -13,7 +13,7 @@
 # storage.enabled
 
 version: axhub/v1 # 권장값. 새 파일은 axhub/v1 을 사용하세요.
-name: nextjs-axhub # 표시용 label. 저장된 앱 이름을 강제하지 않아요.
+name: chatbot-axhub # 표시용 label. 저장된 앱 이름을 강제하지 않아요.
 
 runtime:
   port: 3000 # 1..65535. Dockerfile EXPOSE 와 맞추세요. unset 이면 Dockerfile 또는 기본 설정으로 자동 판단.

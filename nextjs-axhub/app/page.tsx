@@ -84,18 +84,23 @@ await db()\`INSERT INTO todos (user_key, title) VALUES (\${userKey}, \${title})\
   engine: postgres`}</code>
                 <p className="ax-small ax-muted mt-4 mb-0">
                   로컬에서 먼저 해 보려면 <code className="ax-tag">npm run db:up</code> 으로 Postgres 를 띄우고{' '}
-                  <code className="ax-tag">.env.local</code> 에 DATABASE_URL 을 채우세요. 쓰는 법은{' '}
+                  <code className="ax-tag">.env.local</code> 의 DATABASE_URL 줄 주석(#)을 지워요. 순서는 <code className="ax-tag">AXHUB.md</code> §3, 쓰는 법은{' '}
                   <code className="ax-tag">lib/db.ts</code> 에 적혀 있어요.
                 </p>
               </>
             )}
           </div>
 
-          <div className="ax-grid mt-4 sm:grid-cols-2">
+          <div className="ax-grid ax-grid-3 mt-4">
             <GuideCard
               title="화면 만들기"
               code="app/page.tsx"
               desc="이 페이지를 고치거나 새 화면을 추가하세요. 사이드바 메뉴는 config/navigation.ts 에 한 줄 더하면 돼요."
+            />
+            <GuideCard
+              title="axhub 기능 켜기"
+              code="AXHUB.md"
+              desc="파일 저장 · 알림/메일 · 웹훅 · 공개 범위 · 도메인 · 로그 · 되돌리기. 직접 만들기 전에 여기부터 보세요."
             />
             <GuideCard
               title="배포하기"

@@ -1,0 +1,9 @@
+/* axhub 디자인 토큰 + 기본 레이아웃 (자동 생성 — scripts/sync-design.mjs) */
+@import "./tokens.css";
+/* 챗봇 화면 전용 모양 (사이드바 고정·스크롤·입력창·말풍선). 색·크기는 토큰만 써요. */
+@import "./chat.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
