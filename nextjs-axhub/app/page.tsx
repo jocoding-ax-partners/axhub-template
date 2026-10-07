@@ -29,6 +29,35 @@ export default async function Home() {
           </a>
         </div>
 
+        {/* 다음 할 일 — 코드를 몰라도 Claude Code 에 말로 요청해 이어서 만들 수 있게. */}
+        <section className="ax-card">
+          <h2 className="ax-card-title">Claude Code 에 이렇게 요청해 이어서 만드세요</h2>
+          <p className="ax-card-desc">
+            axhub 플러그인이 설치된 Claude Code 를 이 폴더에서 열고, 만들고 싶은 것을 말로 요청하면 돼요. 화면을
+            만들고, 데이터를 붙이고, 배포까지 해 줘요.
+          </p>
+          <ul className="mt-5 mb-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
+            {PROMPT_EXAMPLES.map((ex) => (
+              <li key={ex.prompt} className="rounded-card border border-default p-4">
+                <p className="ax-caption ax-subtle m-0">{ex.label}</p>
+                <p className="ax-small mt-1 mb-0">“{ex.prompt}”</p>
+              </li>
+            ))}
+          </ul>
+          {/* 아직 준비가 안 된 사람은 준비 도우미로 — CLI·코딩 도구·플러그인·로그인을 한 번에 해 줘요. */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-card bg-muted p-4">
+            <div>
+              <p className="ax-small m-0 font-semibold">axhub 를 아직 설치하지 않았나요?</p>
+              <p className="ax-caption ax-muted mt-1 mb-0">
+                준비 도우미가 Claude Code · axhub 플러그인 · 로그인까지 한 번에 준비해 줘요.
+              </p>
+            </div>
+            <a className="ax-btn ax-btn-primary ax-btn-sm" href={ONBOARDER_URL} target="_blank" rel="noreferrer">
+              준비 도우미에서 안내받기
+            </a>
+          </div>
+        </section>
+
         {/* 신원 데모 — 실제 앱에선 지우고 원하는 내용을 넣으세요. */}
         <section className="ax-card">
           <h2 className="ax-card-title">내 정보</h2>
@@ -113,6 +142,17 @@ await db()\`INSERT INTO todos (user_key, title) VALUES (\${userKey}, \${title})\
     </AppShell>
   )
 }
+
+/** 준비 도우미(데스크톱 온보더) 다운로드 페이지. 회사 주소 없이 열리는 공개 화면이에요. */
+const ONBOARDER_URL = 'https://axhub.ai/download'
+
+/** 첫 화면에 보여 줄 요청 예시. axhub 플러그인이 알아듣는 말로 적어요. */
+const PROMPT_EXAMPLES = [
+  { label: '화면 만들기', prompt: '이 axhub 앱에 할 일 목록 화면 만들어줘' },
+  { label: '데이터 저장', prompt: 'DB 켜고 입력한 내용이 저장되게 해줘' },
+  { label: '회사 데이터 쓰기', prompt: '내 connector 데이터로 대시보드 만들어줘' },
+  { label: '배포하기', prompt: 'axhub 에 배포하고 성공했는지 확인해줘' },
+]
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
