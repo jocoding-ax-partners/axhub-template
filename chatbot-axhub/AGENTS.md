@@ -15,56 +15,161 @@
 ## 사용자
 비전공자 한국인 vibe coder. 한국어로 답해요. 코드 용어는 풀어서 설명해요. 결과는 화면으로 확인.
 
-## 디자인 — 토큰과 레이아웃 (에이전트 필수)
+## 디자인 — axhub 디자인 시스템 (에이전트 필수)
 
-이 템플릿은 axhub 콘솔과 같은 디자인 토큰·레이아웃을 쓰고 있어요. **화면을 만들 때 이 규칙을 지켜야 앱들이 같은 모양으로 보여요.**
+이 템플릿은 axhub 콘솔과 **같은 UI 스택**이에요. 화면을 만들 때 아래 규칙을 지켜야 앱들이 콘솔과 같은 모양으로 보여요.
 
-### 색·크기는 항상 토큰으로
+| 층 | 패키지 (이미 설치됨) | 규칙 |
+|---|---|---|
+| 컴포넌트 | `@heroui/react` **v3** | 버튼·입력·선택·표·모달은 전부 여기서. 직접 `<button className=…>` 을 꾸미지 않아요 |
+| 모양·토큰 | `@jocoding-ax-partners/design-system` | CSS 만. 위 컴포넌트를 콘솔처럼 칠하고 의미 토큰을 줘요. import 할 JS 없음 |
+| 콘솔 조각 | `@jocoding-ax-partners/react` | 확인창(`useConfirm`)·`PageHeader`·`StatusDot`·`CodeBlock` 등. **`@/components/ax` 에서** 가져와요 |
+| 아이콘 | `@phosphor-icons/react` | `'use client'` 파일은 `@phosphor-icons/react`, 서버 파일은 `@phosphor-icons/react/ssr` |
+| 배치 | Tailwind 4 | `flex` `grid` `gap-4` `mt-2` 같은 배치에만 |
 
-- ❌ `#2d64fa`, `bg-[#eee]`, `text-[15px]`, `text-gray-500`, `bg-white`
-- ✅ `var(--primary)`, `text-muted`, `bg-content`, `border-default`, `rounded-card`, `.ax-small`
-- 이유: 다크 모드가 토큰 값만 바꿔서 동작해요. 생값을 쓰면 그 부분만 색이 안 따라가요.
-- 예외가 꼭 필요하면 같은 줄에 `design-token-allow` 주석을 답니다.
-- `bash scripts/check-design.sh` 가 위반을 잡아요. 배포 전에 자동으로 돌아요.
+### ⚠️ HeroUI 는 v3 — v2 문법을 쓰지 마세요
 
-### 회색 바탕 위 흰 카드
+인터넷·학습 데이터의 HeroUI/NextUI 예제는 대부분 v2 라 **틀려요.**
 
-내용은 `.ax-card` 안에 넣어요. 이게 axhub 의 기본 모양이에요. 카드 밖에 글씨를 그냥 얹지 마세요.
+- ❌ `<HeroUIProvider>` · `import { Button } from "@heroui/button"` · `<Card><CardBody>` · `color="primary"` · `onClick` · `<Input label="이름" />`
+- ✅ Provider 없음(이미 `components/Providers.tsx` 에 필요한 것만 있음) · `import { Button } from "@heroui/react"` · `<Card><Card.Header><Card.Title>` · `variant="primary"` · **`onPress`** · `<TextField><Label/><Input/></TextField>`
+- 모르는 컴포넌트는 순서대로 확인해요: ① heroui MCP 서버(있으면) ② https://v3.heroui.com/docs/react/components/<이름> ③ `node_modules/@heroui/react/dist/components/<이름>/<이름>.d.ts` (설치된 버전 — 셋이 다르면 ③ 이 맞아요)
+- design-system 이 더하는 것(`data-color` 등)은 `node_modules/@jocoding-ax-partners/design-system/llms.txt` 에 있어요. 화면 코드를 쓰기 전에 한 번 읽어요.
 
-### 페이지 모양
+### 무엇을 쓰나
 
+| 하고 싶은 것 | 쓸 것 |
+|---|---|
+| 버튼 | `Button` (`variant`: `primary` 기본 · `secondary` · `outline` · `ghost` · `danger` · `danger-soft`, `size`: `sm`/`md`/`lg`, 아이콘만이면 `isIconOnly` + `aria-label`) |
+| 버튼 모양의 링크 | `<Link className={buttonVariants({ variant: 'outline' })} href="/x">` (`next/link` + `@heroui/react` 의 `buttonVariants`) |
+| 글자 입력 | `TextField` + `Label` + `Input` (여러 줄은 `TextArea`) + `Description` + `FieldError` |
+| 고르기 | `Select` (+ `ListBox`), 몇 개뿐이면 `RadioGroup` |
+| 체크 · 켜고 끄기 | `Checkbox` · `Switch` |
+| 날짜 | `DatePicker` (기간은 `DateRangePicker`) |
+| 내용 묶기 | `Card` (`Card.Header` · `Card.Title` · `Card.Description` · `Card.Content` · `Card.Footer`) |
+| 목록 표 | `Table` (`Table.ScrollContainer` > `Table.Content` > `Table.Header`/`Table.Body`) |
+| 상태 표시 | 배경 있는 알약 `Chip` (`color`: `success`/`warning`/`danger`/`accent`), 점+글자 `StatusDot` (`@/components/ax`) |
+| 탭 | `Tabs` |
+| 대화상자 · 옆 서랍 | `Modal` · `Drawer` |
+| "정말 삭제할까요?" | `useConfirm()` (`@/components/ax`) — `window.confirm` 금지 |
+| 저장됐어요 알림 | `toast.success('저장했어요')` / `toast.danger(...)` (`@heroui/react`) — `alert()` 금지 |
+| 빈 화면 | `EmptyState` |
+| 로딩 | `Spinner` · `Skeleton` |
+| 페이지 제목 줄 | `PageHeader` (`@/components/ax`) — `title` · `description` · `actions` |
+| 코드·설정 예시 | `CodeBlock` (`@/components/ax`) |
+| 아이콘 | `@phosphor-icons/react` (예: `Plus`, `Trash`, `PencilSimple`) — https://phosphoricons.com |
+
+### 색·글자는 의미 토큰으로
+
+- 색: `bg-surface`(회색 바탕) `bg-content`(흰 면) `bg-muted` · `text-default` `text-secondary` `text-muted` `text-subtle` · `border-default` · `text-primary` `bg-primary-soft` · `text-danger` `text-success` `text-warning`
+- 글자: `t-page-title` `t-section-title` `t-card-title` `t-body` `t-small` `t-caption` (크기+굵기+색이 한 번에), 크기만은 `text-heading-01~05` `text-body-01~03` `text-caption-01~02`
+- 모서리·높이: `rounded-card` `rounded-input` `h-button-md` …
+- ❌ `#2d64fa` · `bg-[#eee]` · `text-[15px]` · `text-gray-500` · `bg-white` · `style={{ color: … }}` — 다크 모드에서 그 부분만 색이 안 따라가요.
+- ❌ 부탁받지 않은 테두리·그림자·구분선을 더하지 않아요. 컴포넌트 기본 모양을 믿어요.
+- ❌ 다른 UI 라이브러리(MUI · antd · Chakra · Mantine · shadcn/ui · Radix · lucide-react · react-icons · HeroUI v2 패키지)를 설치·import 하지 않아요.
+- 예외가 꼭 필요하면 같은 줄에 `design-token-allow` 주석. `bash scripts/check-design.sh` 가 위반을 잡고, 배포 전에 자동으로 돌아요.
+
+### 서버 파일 vs 브라우저 파일
+
+- `@heroui/react` — 어디서나 import 돼요. 단 `onPress` 처럼 **함수를 넘기는 곳은 `'use client'` 파일**이어야 해요.
+- `@jocoding-ax-partners/react` — **`@/components/ax`** 로 가져와요. 그 패키지는 서버 파일에서 직접 쓰면 빌드가 깨져요 — 직접 import 해도 되는 곳은 `'use client'` 파일뿐이에요(`Shell.tsx`·`Providers.tsx` 처럼). 필요한 이름이 없으면 `components/ax.ts` 에 한 줄 더해요.
+- 서버 파일 아이콘은 `@phosphor-icons/react/ssr` 에서 가져오고 `size={16} weight="fill"` 을 직접 넘겨요(서버는 `IconContext` 기본값을 못 읽어요).
+- 데이터 읽기는 서버(`page.tsx`), 누르기·입력 같은 상호작용은 작은 `'use client'` 컴포넌트로 나눠요. 저장은 Server Action(`'use server'`) 으로.
+
+### 예시 1 — 입력 폼 (Server Action 으로 저장)
+
+```tsx
+'use client'
+import { Button, Description, FieldError, Input, Label, TextField } from '@heroui/react'
+import { Plus } from '@phosphor-icons/react'
+
+export function TodoForm({ action }: { action: (fd: FormData) => Promise<void> }) {
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <TextField name="title" isRequired>
+        <Label>할 일</Label>
+        <Input placeholder="예: 보고서 제출" />
+        <Description>50자 이내로 적어요.</Description>
+        <FieldError />
+      </TextField>
+      <Button type="submit"><Plus />추가</Button>
+    </form>
+  )
+}
 ```
-<div class="ax-stack">                     세로 40px 간격
-  <div class="ax-page-header">             제목 + 오른쪽 액션
-    <div>
-      <h1 class="ax-page-title">제목</h1>
-      <p class="ax-page-desc">한 줄 설명</p>
-    </div>
-    <a class="ax-btn ax-btn-ghost">버튼</a>
-  </div>
-  <section class="ax-card"> … </section>
+
+### 예시 2 — 버튼 + 알림
+
+```tsx
+'use client'
+import { Button, toast } from '@heroui/react'
+
+<div className="flex gap-2">
+  <Button onPress={() => toast.success('저장했어요')}>저장</Button>
+  <Button variant="outline">취소</Button>
 </div>
 ```
 
-바깥 여백과 최대 폭은 셸이 이미 잡았어요. 페이지가 또 붙이지 마세요.
+### 예시 3 — 삭제 확인
 
-### 쓸 수 있는 조각
+```tsx
+'use client'
+import { Button, toast } from '@heroui/react'
+import { useConfirm } from '@/components/ax'
 
-`.ax-card` `.ax-card-title` `.ax-card-desc` `.ax-section-title` `.ax-btn`(`.ax-btn-primary` / `.ax-btn-ghost` / `.ax-btn-sm`) `.ax-input` `.ax-tag` `.ax-dot` `.ax-check` `.ax-empty` `.ax-grid`(`.ax-grid-3`) `.ax-muted` `.ax-subtle` `.ax-small` `.ax-caption` `.ax-done`
+export function DeleteButton({ onDelete }: { onDelete: () => Promise<void> }) {
+  const confirm = useConfirm()
+  return (
+    <Button
+      variant="outline"
+      data-color="danger"
+      onPress={async () => {
+        const ok = await confirm({ title: '삭제할까요?', description: '지우면 되돌릴 수 없어요.', confirmLabel: '삭제', variant: 'danger' })
+        if (!ok) return
+        await onDelete()
+        toast.success('삭제했어요')
+      }}
+    >
+      삭제
+    </Button>
+  )
+}
+```
 
-Tailwind 는 배치(flex·grid·gap·mt)에 쓰고, 색과 크기는 위 조각이나 토큰 클래스를 쓰세요.
+체크박스는 `Checkbox.Content` 안에 `Checkbox.Control` 과 `Label` 을 함께 넣어요 (밖에 두면 칸과 글자가 세로로 쪼개져요):
+`<Checkbox name="done"><Checkbox.Content><Checkbox.Control><Checkbox.Indicator /></Checkbox.Control><Label>완료</Label></Checkbox.Content></Checkbox>`
+
+### 페이지 모양
+
+```tsx
+<AppShell>                                   {/* 상단바·사이드바·바깥 여백은 셸이 이미 그려요 */}
+  <div className="flex flex-col gap-10">     {/* 섹션 사이 40px */}
+    <PageHeader title="할 일" description="한 줄 설명" actions={<Link className={buttonVariants()} href="/todos/new">새로 만들기</Link>} />
+    <Card>
+      <Card.Header><Card.Title>목록</Card.Title></Card.Header>
+      <Card.Content>…</Card.Content>
+    </Card>
+  </div>
+</AppShell>
+```
+
+- 회색 바탕 위 흰 카드(`Card`)가 axhub 의 기본 모양이에요. 카드 밖에 내용을 그냥 얹지 마세요.
+- 바깥 여백·최대 폭은 셸(`PageContainer`)이 이미 잡았어요. 페이지가 `p-8`·`max-w-*`·`mx-auto` 를 또 붙이지 마세요.
 
 ### 건드리지 않는 파일
 
-- `app/tokens.css` — 자동 생성이에요. 고치려면 axhub-template 레포의 `design/tokens.css` 를 고치고 `node scripts/sync-design.mjs` 를 돌려요.
-- `components/AppShell.tsx · components/Nav.tsx` — 앱 전체 뼈대예요. 내용만 그 안에 넣어요.
+- `app/axhub.css` — 자동 생성(디자인 시스템 진입점). 고치려면 axhub-template 레포의 `design/axhub.css` 를 고치고 `node scripts/sync-design.mjs`. 이 앱만의 CSS 가 꼭 필요하면 `app/globals.css` 아래에 더해요.
+- `app/chat.css` — AI 답의 마크다운 모양(`.chat-md`)만 있어요. react-markdown 이 만든 태그엔 클래스를 붙일 수 없어서예요. 색은 `var(--fg-muted)` 같은 토큰만 쓰고, 다른 화면 모양은 여기 더하지 말고 Tailwind 클래스·HeroUI 컴포넌트로 그려요.
+- `components/AppShell.tsx` · `components/Shell.tsx` · `components/Providers.tsx` — 앱 전체 뼈대예요. 내용만 `<AppShell>` 안에 넣어요.
+- 다크 모드는 `<html data-theme="dark">` 하나로 바뀌어요 (`app/layout.tsx` 가 시스템 설정을 따라 붙여요). 색을 직접 바꾸지 마세요.
 
 ### 화면·메뉴 추가
 
-- 새 화면은 셸 안에 내용만 넣어요.
-- 사이드바 메뉴는 `config/navigation.ts` 배열에 한 줄 추가해요.
-- 상단바·사이드바는 이미 제자리에 고정돼 있고(`position: sticky`) 페이지 전체가 스크롤돼요. 화면 안에 `h-screen`·`overflow-auto` 로 스크롤 상자를 따로 만들지 마세요 — 스크롤이 두 겹이 돼요.
-- 좁은 화면 메뉴(서랍)는 `components/Nav.tsx` 의 `MobileNav` 예요. 메뉴 항목은 사이드바와 같은 `config/navigation.ts` 를 써요.
+- 챗봇 첫 화면(`/`)은 셸을 쓰지 않고 `components/chat/ChatApp.tsx` 가 화면 전체(대화 목록 사이드바 · 상단바 · 입력창)를 그려요. 대화 영역만 스크롤되는 게 채팅의 기본이라 여기만 예외예요.
+- 새 화면(예: `/docs`)은 `<AppShell>` 안에 내용만 넣어요 (`app/not-found.tsx` 가 예시).
+- 메뉴는 `config/navigation.ts` 배열에 한 줄 추가해요 (아이콘은 phosphor 컴포넌트). 챗봇 화면에선 대화 목록 사이드바 아래 "다른 화면" 에 보여요.
+- `<AppShell>` 화면은 상단바·사이드바가 이미 제자리에 고정돼 있고(`sticky`) 페이지 전체가 스크롤돼요. 그 안에 `h-screen`·`overflow-auto` 로 스크롤 상자를 따로 만들지 마세요 — 스크롤이 두 겹이 돼요.
+- 좁은 화면 메뉴(서랍)는 `components/Shell.tsx` 가 같은 `config/navigation.ts` 로 그려요.
 - 없는 주소는 `app/not-found.tsx`, 화면 오류는 `app/error.tsx` 가 보여줘요. 데이터가 없을 때는 `notFound()` 를 불러요.
 
 ## 이 템플릿 = AI 챗봇
@@ -78,8 +183,8 @@ Tailwind 는 배치(flex·grid·gap·mt)에 쓰고, 색과 크기는 위 조각�
 | 말 한 줄(말풍선·마크다운·복사·코드 복사) | `components/chat/Message.tsx` |
 | 입력창(자동 높이·Enter/Shift+Enter) | `components/chat/Composer.tsx` |
 | 스크롤 규칙(맨 아래 따라가기·아래로 버튼) | `components/chat/MessageList.tsx` |
-| 사이드바(새 대화·지난 대화·다른 화면 메뉴·로그인) | `components/chat/Sidebar.tsx` |
-| 크기·간격·고정 배치 | `app/chat.css` |
+| 사이드바(새 대화·지난 대화·삭제 확인·다른 화면 메뉴·로그인, 좁은 화면 서랍) | `components/chat/Sidebar.tsx` |
+| AI 답의 마크다운 모양(목록·표·코드 블록) | `app/chat.css` (그 밖의 크기·간격은 각 컴포넌트의 Tailwind 클래스) |
 | 브라우저 저장(localStorage)·스트림 읽기 | `lib/chat-client.ts` |
 | 모델·답 길이·Claude 옵션 | `app/api/chat/route.ts` (모델 기본값은 `lib/ai.ts`, 바꿀 땐 env `AI_MODEL` 우선) |
 
@@ -148,7 +253,7 @@ CREATE INDEX IF NOT EXISTS chat_conversations_user ON chat_conversations (user_k
 
 ## Stack
 Claude (`@anthropic-ai/sdk`, `lib/ai.ts`) · 마크다운 렌더 (`react-markdown` + `remark-gfm`) ·
-Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 3 · Node 20+ ·
+Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 4 · HeroUI v3 + axhub design-system · Node 20+ ·
 **데이터는 표준 PostgreSQL** (`lib/db.ts`, `DATABASE_URL`) · **인증/식별 · 외부 connector 는 `@ax-hub/sdk 6.x`** (`lib/axhub-server.ts`).
 
 ## 5가지 Vibe Coder 프로토콜 (모든 작업에 적용)
@@ -162,7 +267,7 @@ Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript stric
 3. **No unprompted refactor** — X 요청에 Y / Z 같이 "개선" 금지. 변경한 모든 line 이 X 와 직접 관련.
 4. **Honest failure** — 못 만들면 plainly 말해요. "아직 안 풀렸어요. 시도: A, B. 모름: C." 가짜 성공 보고 금지.
 5. **Ask before install** — 작은 utility 라도 npm install 전에 "X 추가해도 될까요? 이유: Y" 한 번 물어봐요.
-   (단, `@ax-hub/sdk` · `postgres` · `@anthropic-ai/sdk` · `react-markdown` · `remark-gfm` 은 이미 설치돼 있으니 다시 설치 금지.)
+   (단, `@ax-hub/sdk` · `postgres` · `@anthropic-ai/sdk` · `react-markdown` · `remark-gfm` · `@heroui/react` · `@jocoding-ax-partners/*` · `@phosphor-icons/react` 는 이미 설치돼 있으니 다시 설치 금지. UI 라이브러리는 더 설치하지 않아요.)
 
 ## 데이터 = 표준 PostgreSQL (`lib/db.ts`)
 
@@ -310,7 +415,9 @@ try {
 - DO NOT 사용자 세션 쿠키(`_hub_access`)/토큰을 응답 본문·로그에 노출.
 - DO NOT `.env.local` 커밋 (`.gitignore` 막혀있지만 force-add 도 금지).
 - DO NOT 사용자 동의 없이 destructive git (`reset --hard`, `push --force`, `branch -D`).
-- DO NOT 새 npm 패키지 사용자 확인 없이 설치 (`@ax-hub/sdk` · `postgres` 는 이미 들어가 있어 재설치 금지).
+- DO NOT 새 npm 패키지 사용자 확인 없이 설치 (`@ax-hub/sdk` · `postgres` · `@anthropic-ai/sdk` · UI 패키지는 이미 들어가 있어 재설치 금지). 다른 UI 키트·아이콘 팩은 묻지도 말고 쓰지 않아요.
+- DO NOT HeroUI v2 문법(`@heroui/<컴포넌트>` 패키지, `HeroUIProvider`, `CardBody`, `onClick`) — 이 앱은 v3 (`@heroui/react`).
+- DO NOT 생색(#hex)·생크기(`text-[15px]`)·Tailwind 기본 팔레트(`text-gray-500`, `bg-white`) — 의미 토큰만.
 - DO NOT `npm run build`·배포를 사용자가 묻기 전에 실행 (느리고 결과물이 바뀌어요). 고친 뒤 확인용 `npx tsc --noEmit` · `npm run check:design` 은 스스로 돌려도 돼요 — Verify-then-claim 의 일부예요.
 
 ## 신뢰 모델 (1-line)

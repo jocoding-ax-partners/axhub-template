@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { Button, Card, buttonVariants } from '@heroui/react'
 
 /**
  * 화면을 그리다 오류가 나면 Next.js 기본 화면 대신 이 화면이 보여요.
@@ -16,20 +17,20 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error])
 
   return (
-    <div className="grid min-h-screen place-items-center bg-surface px-5">
-      <section className="ax-card w-full max-w-xl text-center">
-        <h1 className="ax-card-title m-0">문제가 생겼어요</h1>
-        <p className="ax-card-desc">잠시 뒤 다시 시도해 주세요. 계속되면 아래 번호를 관리자에게 알려 주세요.</p>
-        {error.digest && <p className="ax-caption ax-subtle mt-2 font-mono">오류 번호 {error.digest}</p>}
-        <div className="mt-6 flex justify-center gap-2">
-          <button type="button" className="ax-btn ax-btn-primary" onClick={reset}>
-            다시 시도
-          </button>
-          <Link className="ax-btn ax-btn-ghost" href="/">
+    <div className="grid min-h-screen place-items-center px-5">
+      <Card className="w-full max-w-xl items-center text-center">
+        <Card.Header className="items-center">
+          <Card.Title>문제가 생겼어요</Card.Title>
+          <Card.Description>잠시 뒤 다시 시도해 주세요. 계속되면 아래 번호를 관리자에게 알려 주세요.</Card.Description>
+          {error.digest && <p className="t-caption mt-2 font-mono">오류 번호 {error.digest}</p>}
+        </Card.Header>
+        <Card.Footer className="justify-center gap-2">
+          <Button onPress={reset}>다시 시도</Button>
+          <Link className={buttonVariants({ variant: 'outline' })} href="/">
             홈으로
           </Link>
-        </div>
-      </section>
+        </Card.Footer>
+      </Card>
     </div>
   )
 }

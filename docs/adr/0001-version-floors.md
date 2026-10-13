@@ -1,6 +1,6 @@
 # ADR-0001: 2026 BP 버전 홀드백 + 명명된 unblock 드라이버
 
-**상태:** Accepted (2026-04-28) · 개정 (2026-05-20 — 템플릿 3종 정리 + 부트스트랩 인증·설정 모델 반영) · 개정 (2026-06-08 — Node SDK 2.x 템플릿 정렬) · 개정 (2026-06-14 — Node SDK 3.0 정렬: gateway grant·session 모델 + 백엔드 15fd5a2 surface)
+**상태:** Accepted (2026-04-28) · 개정 (2026-10-12 — H1 Tailwind 3 홀드백 해제: 템플릿 전부 HeroUI v3 + axhub 디자인 시스템으로) · 개정 (2026-05-20 — 템플릿 3종 정리 + 부트스트랩 인증·설정 모델 반영) · 개정 (2026-06-08 — Node SDK 2.x 템플릿 정렬) · 개정 (2026-06-14 — Node SDK 3.0 정렬: gateway grant·session 모델 + 백엔드 15fd5a2 surface)
 **의사결정자:** ralplan 합의 (Planner / Architect / Critic, 2 iter) · 개정: ksro0128 (axhub bootstrap 준비, [docs/bootstrap-prep.md](../bootstrap-prep.md))
 
 ## 배경
@@ -26,7 +26,9 @@
 
 ## 의도적 홀드백
 
-### H1: Tailwind CSS 3.x (TW 4 미적용)
+### H1: Tailwind CSS 3.x (TW 4 미적용) — **해제 (2026-10-12)**
+
+> **2026-10-12 해제.** unblock driver 의 둘째 조건("axhub 공식 가이드가 TW 4 로 전환")이 충족됐다 — 콘솔이 쓰는 `@jocoding-ax-partners/design-system` 4.x 가 Tailwind 4 + HeroUI v3 를 요구하고, 템플릿 전부(`nextjs-axhub`·`chatbot-axhub`·`idea-*`)를 콘솔과 같은 부품(HeroUI v3 + axhub 디자인 시스템 + `@jocoding-ax-partners/react`)으로 옮기기로 했다. 부품·토큰 규칙은 각 템플릿 `AGENTS.md` 의 디자인 절이 정본이다. 아래는 홀드백 당시 기록이다.
 
 **적용 대상:** `nextjs-axhub`, `vite-react-axhub`
 **현재 핀:** `tailwindcss: ^3.4.x`

@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react'
+import { Card, buttonVariants } from '@heroui/react'
 import { AppShell } from '@/components/AppShell'
+import { CodeBlock, PageHeader, StatusDot } from '@/components/ax'
 import { APP_NAME, isAxhubConfigured, me } from '@/lib/axhub-server'
 import { isDbConfigured } from '@/lib/db'
 
@@ -17,66 +20,66 @@ export default async function Home() {
 
   return (
     <AppShell>
-      {/* 페이지 내용은 .ax-stack 으로 세로로 쌓아요. 바깥 여백은 셸이 이미 잡아 놨어요. */}
-      <div className="ax-stack">
-        <div className="ax-page-header">
-          <div>
-            <h1 className="ax-page-title">{title}</h1>
-            <p className="ax-page-desc">{desc}</p>
-          </div>
-          <a className="ax-btn ax-btn-ghost" href="https://docs.axhub.ai/ko/docs" target="_blank" rel="noreferrer">
-            가이드 보기
-          </a>
-        </div>
+      {/* 페이지 = 세로로 40px 간격(gap-10)으로 쌓아요. 바깥 여백은 셸이 이미 잡아 놨어요. */}
+      <div className="flex flex-col gap-10">
+        <PageHeader
+          title={title}
+          description={desc}
+          actions={
+            <a className={buttonVariants({ variant: 'outline' })} href="https://docs.axhub.ai/ko/docs" target="_blank" rel="noreferrer">
+              가이드 보기
+            </a>
+          }
+        />
 
         {/* 다음 할 일 — 코드를 몰라도 Claude Code 에 말로 요청해 이어서 만들 수 있게. */}
-        <section className="ax-card">
-          <h2 className="ax-card-title">Claude Code 에 이렇게 요청해 이어서 만드세요</h2>
-          <p className="ax-card-desc">
-            axhub 플러그인이 설치된 Claude Code 를 이 폴더에서 열고, 만들고 싶은 것을 말로 요청하면 돼요. 화면을
-            만들고, 데이터를 붙이고, 배포까지 해 줘요.
-          </p>
-          <ul className="mt-5 mb-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {PROMPT_EXAMPLES.map((ex) => (
-              <li key={ex.prompt} className="rounded-card border border-default p-4">
-                <p className="ax-caption ax-subtle m-0">{ex.label}</p>
-                <p className="ax-small mt-1 mb-0">“{ex.prompt}”</p>
-              </li>
-            ))}
-          </ul>
-          {/* 아직 준비가 안 된 사람은 준비 도우미로 — CLI·코딩 도구·플러그인·로그인을 한 번에 해 줘요. */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-card bg-muted p-4">
-            <div>
-              <p className="ax-small m-0 font-semibold">axhub 를 아직 설치하지 않았나요?</p>
-              <p className="ax-caption ax-muted mt-1 mb-0">
-                준비 도우미가 Claude Code · axhub 플러그인 · 로그인까지 한 번에 준비해 줘요.
-              </p>
+        <Card>
+          <Card.Header>
+            <Card.Title>Claude Code 에 이렇게 요청해 이어서 만드세요</Card.Title>
+            <Card.Description>
+              axhub 플러그인이 설치된 Claude Code 를 이 폴더에서 열고, 만들고 싶은 것을 말로 요청하면 돼요. 화면을
+              만들고, 데이터를 붙이고, 배포까지 해 줘요.
+            </Card.Description>
+          </Card.Header>
+          <Card.Content className="flex flex-col gap-4">
+            <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
+              {PROMPT_EXAMPLES.map((ex) => (
+                <li key={ex.prompt} className="rounded-card border border-default p-4">
+                  <p className="t-caption">{ex.label}</p>
+                  <p className="t-small mt-1">“{ex.prompt}”</p>
+                </li>
+              ))}
+            </ul>
+            {/* 아직 준비가 안 된 사람은 준비 도우미로 — CLI·코딩 도구·플러그인·로그인을 한 번에 해 줘요. */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-muted p-4">
+              <div>
+                <p className="t-small font-semibold">axhub 를 아직 설치하지 않았나요?</p>
+                <p className="t-caption mt-1">준비 도우미가 Claude Code · axhub 플러그인 · 로그인까지 한 번에 준비해 줘요.</p>
+              </div>
+              <a className={buttonVariants({ variant: 'primary', size: 'sm' })} href={ONBOARDER_URL} target="_blank" rel="noreferrer">
+                준비 도우미에서 안내받기
+              </a>
             </div>
-            <a className="ax-btn ax-btn-primary ax-btn-sm" href={ONBOARDER_URL} target="_blank" rel="noreferrer">
-              준비 도우미에서 안내받기
-            </a>
-          </div>
-        </section>
+          </Card.Content>
+        </Card>
 
         {/* 신원 데모 — 실제 앱에선 지우고 원하는 내용을 넣으세요. */}
-        <section className="ax-card">
-          <h2 className="ax-card-title">내 정보</h2>
-          <p className="ax-card-desc">
-            axhub 문이 요청마다 실어 주는 <code className="ax-tag">X-AxHub-*</code> 헤더를 읽은 결과예요. 허브에 다시 묻지 않아요.
-          </p>
-
-          <div className="mt-5">
+        <Card>
+          <Card.Header>
+            <Card.Title>내 정보</Card.Title>
+            <Card.Description>
+              axhub 문이 요청마다 실어 주는 <Code>X-AxHub-*</Code> 헤더를 읽은 결과예요. 허브에 다시 묻지 않아요.
+            </Card.Description>
+          </Card.Header>
+          <Card.Content>
             {!configured ? (
-              <p className="ax-muted ax-small">
-                로컬에는 문(게이트)이 없어서 값이 비어 있어요. 배포하면 채워져요.
-              </p>
+              <p className="t-small">로컬에는 문(게이트)이 없어서 값이 비어 있어요. 배포하면 채워져요.</p>
             ) : (
               <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                 <Row label="상태">
-                  <span className="inline-flex items-center gap-2">
-                    <span className={visitor.authenticated ? 'ax-dot ax-dot-ok' : 'ax-dot ax-dot-idle'} />
+                  <StatusDot tone={visitor.authenticated ? 'active' : 'muted'}>
                     {visitor.authenticated ? '로그인함' : '로그인 안 함 (정상)'}
-                  </span>
+                  </StatusDot>
                 </Row>
                 <Row label="이름">{visitor.name || '—'}</Row>
                 <Row label="이메일">{visitor.email || '—'}</Row>
@@ -85,42 +88,46 @@ export default async function Home() {
                 <Row label="관리자">{visitor.is_admin ? '예' : '아니오'}</Row>
               </dl>
             )}
-          </div>
-        </section>
+          </Card.Content>
+        </Card>
 
-        <section>
-          <h2 className="ax-section-title">시작 안내</h2>
+        <section className="flex flex-col gap-4">
+          <h2 className="t-section-title">시작 안내</h2>
 
           {/* 데이터베이스는 기본으로 붙지 않아요 — 필요할 때 켜는 방식이에요. */}
-          <div className="ax-card">
-            <h3 className="ax-card-title">데이터베이스 연결하기</h3>
-            {dbReady ? (
-              <>
-                <p className="ax-card-desc">
-                  연결돼 있어요. <code className="ax-tag">lib/db.ts</code> 로 바로 쿼리하면 돼요.
-                </p>
-                <code className="ax-code">{`import { db, ensureSchema } from "@/lib/db";
+          <Card>
+            <Card.Header>
+              <Card.Title>데이터베이스 연결하기</Card.Title>
+              <Card.Description>
+                {dbReady ? (
+                  <>
+                    연결돼 있어요. <Code>lib/db.ts</Code> 로 바로 쿼리하면 돼요.
+                  </>
+                ) : (
+                  <>
+                    이 앱은 아직 데이터베이스가 없어요. 필요하면 <Code>axhub.yaml</Code> 에서 아래 두 줄의 주석을 풀고 다시
+                    배포하세요. 전용 PostgreSQL 이 발급되고 접속 정보가 자동으로 들어와요.
+                  </>
+                )}
+              </Card.Description>
+            </Card.Header>
+            <Card.Content className="flex flex-col gap-4">
+              {dbReady ? (
+                <CodeBlock language="tsx" code={DB_EXAMPLE} className="rounded-card bg-muted p-4" />
+              ) : (
+                <>
+                  <CodeBlock language="yaml" code={'database:\n  engine: postgres'} className="rounded-card bg-muted p-4" />
+                  <p className="t-small">
+                    로컬에서 먼저 해 보려면 <Code>npm run db:up</Code> 으로 Postgres 를 띄우고 <Code>.env.local</Code> 의
+                    DATABASE_URL 줄 주석(#)을 지워요. 순서는 <Code>AXHUB.md</Code> §3, 쓰는 법은 <Code>lib/db.ts</Code> 에
+                    적혀 있어요.
+                  </p>
+                </>
+              )}
+            </Card.Content>
+          </Card>
 
-await ensureSchema();
-await db()\`INSERT INTO todos (user_key, title) VALUES (\${userKey}, \${title})\`;`}</code>
-              </>
-            ) : (
-              <>
-                <p className="ax-card-desc">
-                  이 앱은 아직 데이터베이스가 없어요. 필요하면 <code className="ax-tag">axhub.yaml</code> 에서 아래 두 줄의 주석을 풀고 다시 배포하세요. 전용 PostgreSQL 이 발급되고 접속 정보가 자동으로 들어와요.
-                </p>
-                <code className="ax-code">{`database:
-  engine: postgres`}</code>
-                <p className="ax-small ax-muted mt-4 mb-0">
-                  로컬에서 먼저 해 보려면 <code className="ax-tag">npm run db:up</code> 으로 Postgres 를 띄우고{' '}
-                  <code className="ax-tag">.env.local</code> 의 DATABASE_URL 줄 주석(#)을 지워요. 순서는 <code className="ax-tag">AXHUB.md</code> §3, 쓰는 법은{' '}
-                  <code className="ax-tag">lib/db.ts</code> 에 적혀 있어요.
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className="ax-grid ax-grid-3 mt-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <GuideCard
               title="화면 만들기"
               code="app/page.tsx"
@@ -138,6 +145,7 @@ await db()\`INSERT INTO todos (user_key, title) VALUES (\${userKey}, \${title})\
             />
           </div>
         </section>
+
       </div>
     </AppShell>
   )
@@ -154,41 +162,55 @@ const PROMPT_EXAMPLES = [
   { label: '배포하기', prompt: 'axhub 에 배포하고 성공했는지 확인해줘' },
 ]
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+const DB_EXAMPLE = `import { db, ensureSchema } from "@/lib/db";
+
+await ensureSchema();
+await db()\`INSERT INTO todos (user_key, title) VALUES (\${userKey}, \${title})\`;`
+
+/** 문장 속 파일명·명령 — 회색 바탕 고정폭 글자. */
+function Code({ children }: { children: ReactNode }) {
+  return <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-caption-01 text-secondary">{children}</code>
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-default pb-2 last:border-0">
-      <dt className="ax-caption ax-subtle shrink-0">{label}</dt>
-      <dd className="ax-small m-0 text-right">{children}</dd>
+    <div className="flex items-baseline justify-between gap-4 border-b border-default pb-2">
+      <dt className="t-caption shrink-0">{label}</dt>
+      <dd className="t-small text-right">{children}</dd>
     </div>
   )
 }
 
 function GuideCard({ title, code, desc }: { title: string; code: string; desc: string }) {
   return (
-    <div className="ax-card">
-      <h3 className="ax-card-title">{title}</h3>
-      <p className="ax-caption ax-subtle mt-1 mb-0 font-mono">{code}</p>
-      <p className="ax-small ax-muted mt-3 mb-0">{desc}</p>
-    </div>
+    <Card>
+      <Card.Header>
+        <Card.Title>{title}</Card.Title>
+        <Card.Description className="font-mono">{code}</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <p className="t-small">{desc}</p>
+      </Card.Content>
+    </Card>
   )
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * 🤖 Claude Code / AI 에이전트 — 이 앱 만드는 법 (지우지 말 것)
  *
- * 【디자인】 색·크기는 항상 토큰으로. #hex 나 text-[15px], text-gray-500 금지.
- *   - 배경은 회색(surface), 내용은 흰 카드(.ax-card) 안에. 이게 axhub 의 기본 모양이다.
- *   - 페이지 = <div className="ax-stack"> 안에 .ax-page-header + 섹션들.
- *   - 바깥 여백·최대 폭은 셸(.ax-container)이 이미 잡았다. 페이지가 또 붙이지 않는다.
- *   - 쓸 수 있는 조각: .ax-card .ax-card-title .ax-card-desc .ax-section-title
- *     .ax-btn(.ax-btn-primary/.ax-btn-ghost/.ax-btn-sm) .ax-input .ax-tag .ax-dot .ax-check
- *     .ax-code .ax-empty .ax-grid(.ax-grid-3) .ax-muted .ax-subtle .ax-small .ax-caption .ax-done
- *   - Tailwind 는 배치(flex/grid/gap/mt)에 쓰고, 색은 토큰 클래스(text-muted, bg-content,
- *     border-default, rounded-card)를 쓴다.
- *   - 전체 규칙은 app/tokens.css 주석 참고. 그 파일은 자동 생성이라 고치지 않는다.
+ * 【디자인】 axhub 콘솔과 같은 스택 — 자세한 규칙·예시는 AGENTS.md 「디자인」.
+ *   - 컴포넌트는 @heroui/react (v3) 에서: Card · Button · TextField · Select · Checkbox · Modal · Table · Chip · toast.
+ *     v2 문법(<Card><CardBody>, color="primary", onClick) 은 틀린다 — v3 는 Card.Header/Card.Content, onPress.
+ *   - 콘솔 공용 조각(PageHeader · StatusDot · CodeBlock · useConfirm …)은 '@/components/ax' 에서.
+ *   - 버튼 모양의 링크는 <Link className={buttonVariants({ variant: 'primary' })}>.
+ *   - 아이콘은 @phosphor-icons/react ('use client' 파일) / @phosphor-icons/react/ssr (서버 파일).
+ *   - 색은 의미 클래스(bg-content, text-muted, border-default, text-danger), 글자는 t-* (t-small, t-caption).
+ *     #hex · text-[15px] · text-gray-500 · bg-white 금지. 다른 UI 라이브러리 설치 금지.
+ *   - 페이지 = <div className="flex flex-col gap-10"> 안에 <PageHeader> + <Card> 들.
+ *   - 바깥 여백·최대 폭은 셸(PageContainer)이 이미 잡았다. 페이지가 또 붙이지 않는다.
  *
  * 【레이아웃】 새 화면을 추가할 때
- *   - components/AppShell.tsx 는 건드리지 않는다. 내용만 <AppShell> 안에 넣는다.
+ *   - components/AppShell.tsx · Shell.tsx 는 건드리지 않는다. 내용만 <AppShell> 안에 넣는다.
  *   - 사이드바 메뉴는 config/navigation.ts 배열에 한 줄 추가한다.
  *
  * 【백엔드】 전부 서버에서 (Server Component / Route Handler / Server Action).

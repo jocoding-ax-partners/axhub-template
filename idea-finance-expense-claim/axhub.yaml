@@ -1,0 +1,29 @@
+version: axhub/v1
+name: idea-finance-expense-claim
+# 경비 데이터를 저장할 전용 PostgreSQL. 배포 시 DATABASE_URL / DIRECT_DATABASE_URL 이 자동으로 들어와요.
+database:
+  engine: postgres
+# 영수증 사진을 저장할 비공개 파일 저장소. STORAGE_* 값이 자동으로 들어와요 (AXHUB.md §4).
+storage:
+  enabled: true
+runtime:
+  port: 3000
+  health_path: /healthz
+build:
+  strategy: auto
+  framework: nextjs
+  dockerfile: Dockerfile
+  deploy_method: docker
+env:
+  optional:
+    - name: APPHUB_API_URL
+      scope: runtime
+    - name: APPHUB_APP_SLUG
+      scope: runtime
+    - name: APPHUB_TENANT
+      scope: runtime
+
+# 배포 전 검사. 디자인 토큰 규칙을 어기면 여기서 걸려요.
+ci:
+  commands:
+    - bash scripts/check-design.sh

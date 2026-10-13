@@ -40,7 +40,7 @@ export default async function Home() {
  *   - 화면 뼈대·대화 상태(보내기·다시 생성·대화 목록) → components/chat/ChatApp.tsx
  *   - 말 한 줄 모양(말풍선·마크다운·복사) → components/chat/Message.tsx
  *   - 입력창 → components/chat/Composer.tsx · 스크롤 규칙 → components/chat/MessageList.tsx
- *   - 사이드바 → components/chat/Sidebar.tsx · 모양(크기·간격) → app/chat.css
+ *   - 사이드바 → components/chat/Sidebar.tsx · AI 답 마크다운 모양 → app/chat.css
  *   - Claude 호출(모델·길이·옵션) → app/api/chat/route.ts, 키·모델 상수는 lib/ai.ts
  *   - 브라우저 저장·스트림 읽기 → lib/chat-client.ts
  *
@@ -48,5 +48,6 @@ export default async function Home() {
  *   - lib/ai.ts 와 @anthropic-ai/sdk 는 서버에서만 import. "use client" 파일에서 import 하면
  *     API 키가 브라우저로 샌다.
  *   - 키는 코드에 적지 않는다. 로컬은 .env.local, 배포는 axhub env (secret).
- *   - 색·크기는 토큰만 쓴다 (AGENTS.md 디자인 절). 채팅 전용 모양은 app/chat.css 에 모아 둔다.
+ *   - 화면은 @heroui/react v3 컴포넌트 + 의미 토큰 클래스(bg-content, text-muted, t-small)로 (AGENTS.md 「디자인」).
+ *     #hex · text-[15px] · text-gray-500 금지. app/chat.css 엔 마크다운 모양만 둔다.
  * ───────────────────────────────────────────────────────────────────────────── */

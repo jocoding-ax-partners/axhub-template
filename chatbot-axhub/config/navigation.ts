@@ -1,25 +1,22 @@
-// 사이드바 메뉴. 화면을 추가하면 여기에 한 줄 더하면 돼요.
-//
-//   { label: "할 일", href: "/todos", icon: ICONS.list }
-//
-// 바깥 사이트로 나가는 링크는 external: true 를 붙여요.
-// icon 은 24×24 SVG 의 path 예요. 새 아이콘이 필요하면 path 문자열만 추가하세요.
+'use client'
 
-export const ICONS = {
-  home: "M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5",
-  book: "M4 4.5h6a2 2 0 0 1 2 2V20a2 2 0 0 0-2-2H4zM20 4.5h-6a2 2 0 0 0-2 2V20a2 2 0 0 1 2-2h6z",
-  list: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
-  chat: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
-} as const;
+// 아이콘(@phosphor-icons/react)이 브라우저 쪽 모듈이라 이 파일도 브라우저 쪽이에요. 서버 페이지에서 import 하지 마세요.
+// 메뉴. 챗봇 화면("/")은 왼쪽 사이드바가 대화 목록이라, 여기에 더한 다른 화면은
+// 그 사이드바 아래쪽 "다른 화면" 에 보여요 (components/chat/Sidebar.tsx).
+// 화면을 추가하면 여기에 한 줄 더하면 돼요.
+//
+//   { label: "자료실", href: "/docs", icon: BookOpen }
+//
+// 아이콘은 @phosphor-icons/react 에서 골라요 (https://phosphoricons.com — 이름 그대로 import).
+// href 가 http(s):// 로 시작하면 새 탭으로 열려요.
+import { ChatCircle, type Icon } from "@phosphor-icons/react";
 
 export type NavItem = {
   label: string;
   href: string;
-  icon: string;
-  /** 바깥 사이트로 나가는 링크면 true */
-  external?: boolean;
+  icon: Icon;
 };
 
 export const NAVIGATION: NavItem[] = [
-  { label: "대화", href: "/", icon: ICONS.chat },
+  { label: "대화", href: "/", icon: ChatCircle },
 ];

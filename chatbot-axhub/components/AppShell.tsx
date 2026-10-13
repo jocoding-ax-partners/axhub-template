@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react'
-import Link from 'next/link'
+import { buttonVariants } from '@heroui/react'
 import { APP_NAME, isAxhubConfigured, loginUrl, logoutUrl, me } from '@/lib/axhub-server'
-import { MobileNav, SideNav } from './Nav'
+import { Shell } from './Shell'
 
 /**
- * 앱 전체 뼈대 — 상단바 + 사이드바 + 본문. axhub 콘솔과 같은 골격이에요.
- * 상단바와 사이드바는 스크롤해도 제자리에 있고 본문만 움직여요 (app/tokens.css 의 sticky).
- * 좁은 화면(1024px 미만)에선 사이드바 대신 상단 왼쪽 메뉴 버튼이 서랍을 열어요 (components/Nav.tsx).
+ * 앱 전체 뼈대 — 상단바 + 사이드바 + 본문. axhub 콘솔과 같은 골격이에요 (그리는 건 components/Shell.tsx).
+ * 이 파일은 서버에서 방문자 정보를 읽어 상단바 오른쪽(좁은 화면은 서랍 아래) 로그인 영역을 만들어요.
  *
  * 화면을 추가할 땐 이 파일이 아니라 <AppShell> 안에 내용을 넣으세요.
  * 메뉴를 늘리려면 config/navigation.ts 를 고치세요.
@@ -19,51 +18,30 @@ export async function AppShell({ children }: { children: ReactNode }) {
   // 회사 앱은 끊을 앱 세션이 없어 null 이에요. 그땐 콘솔 로그아웃을 안내해요.
   const logoutHref = configured ? await logoutUrl('/') : null
 
-  // 로그인 정보 — 상단바 오른쪽과 휴대폰 서랍 아래에 같은 내용을 보여줘요.
   const account = !configured ? (
-    <span className="ax-caption ax-subtle">로컬 실행 중</span>
+    <span className="t-caption">로컬 실행 중</span>
   ) : visitor.authenticated ? (
     <>
-      {/* 회사 앱은 끊을 앱 세션이 없어 logoutHref 가 null 이에요.
-          그땐 버튼처럼 보이는 문구를 두지 않고 이름에 설명만 붙여요. */}
-      <span className="ax-small" title={logoutHref ? undefined : '이 앱은 axhub 콘솔 로그인을 그대로 써요. 로그아웃은 콘솔에서 하세요.'}>
+      {/* 회사 앱은 logoutHref 가 null — 버튼처럼 보이는 문구 대신 이름에 설명만 붙여요. */}
+      <span className="t-small" title={logoutHref ? undefined : '이 앱은 axhub 콘솔 로그인을 그대로 써요. 로그아웃은 콘솔에서 하세요.'}>
         {visitor.name || visitor.email}
       </span>
       {logoutHref && (
-        <a className="ax-btn ax-btn-ghost ax-btn-sm" href={logoutHref}>
+        <a className={buttonVariants({ variant: 'outline', size: 'sm' })} href={logoutHref}>
           로그아웃
         </a>
       )}
     </>
   ) : (
-    <a className="ax-btn ax-btn-primary ax-btn-sm" href={loginHref}>
+    // 로그인은 플랫폼 경로(/__axhub/auth/*)로 페이지째 이동해야 해서 <a> 에 버튼 모양만 입혀요.
+    <a className={buttonVariants({ variant: 'primary', size: 'sm' })} href={loginHref}>
       axhub 로 로그인
     </a>
   )
 
   return (
-    <div className="ax-shell">
-      <header className="ax-topbar">
-        <MobileNav appName={APP_NAME} account={account} />
-
-        <Link className="ax-brand" href="/">
-          <span className="ax-brand-mark">ax</span>
-          <span className="ax-brand-name">{APP_NAME}</span>
-        </Link>
-
-        <div className="ax-topbar-main">
-          {/* 메뉴·검색을 상단에 두고 싶으면 여기에 넣으세요. */}
-          <div className="ax-topbar-center" />
-          <div className="ax-topbar-right">{account}</div>
-        </div>
-      </header>
-
-      <div className="ax-body">
-        <SideNav />
-        <main className="ax-main">
-          <div className="ax-container">{children}</div>
-        </main>
-      </div>
-    </div>
+    <Shell appName={APP_NAME} account={account}>
+      {children}
+    </Shell>
   )
 }

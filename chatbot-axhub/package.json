@@ -2,7 +2,7 @@
   "name": "chatbot-axhub",
   "version": "0.1.0",
   "private": true,
-  "description": "axhub 위에서 바로 굴러가는 AI 챗봇 템플릿 (Next.js 16 + Claude)",
+  "description": "axhub 위에서 바로 굴러가는 AI 챗봇 템플릿 (Next.js 16 + Claude + Tailwind 4 + HeroUI v3)",
   "engines": {
     "node": ">=20"
   },
@@ -26,7 +26,12 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "@heroui/react": "^3.2.4",
+    "@heroui/styles": "^3.2.4",
+    "@jocoding-ax-partners/design-system": "^4.2.0",
+    "@jocoding-ax-partners/react": "^2.1.1",
+    "@phosphor-icons/react": "^2.1.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -35,8 +40,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.2.4",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5",
+    "@tailwindcss/postcss": "^4.3.0"
   }
 }
