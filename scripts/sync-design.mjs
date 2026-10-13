@@ -8,27 +8,45 @@
  * bootstrap 은 템플릿 폴더 하나만 복사하므로 템플릿마다 각자 사본을 가져야 해요.
  * 손으로 고치면 갈라지니, 항상 design/ 만 고치고 이 스크립트를 돌리세요.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
 
-/** 정본 → 템플릿별 사본 위치. */
-const TARGETS = [
-  { src: "design/tokens.css", dest: "nextjs-axhub/app/tokens.css" },
-  { src: "design/tokens.css", dest: "chatbot-axhub/app/tokens.css" },
-  { src: "design/tailwind-preset.js", dest: "nextjs-axhub/tailwind-preset.js" },
-  { src: "design/tailwind-preset.js", dest: "chatbot-axhub/tailwind-preset.js" },
-  { src: "scripts/check-design.sh", dest: "nextjs-axhub/scripts/check-design.sh" },
-  { src: "scripts/check-design.sh", dest: "chatbot-axhub/scripts/check-design.sh" },
-  // axhub 활용 안내 — 템플릿마다 같은 내용 (README · AGENTS.md 가 링크해요)
-  { src: "shared/AXHUB.md", dest: "nextjs-axhub/AXHUB.md" },
-  { src: "shared/AXHUB.md", dest: "chatbot-axhub/AXHUB.md" },
+// 템플릿 폴더 — 아이디어 카드의 「바로 시작」 템플릿(idea-*, spec 676)도 같은 정본을 받아요.
+const TEMPLATES = [
+  "nextjs-axhub",
+  "chatbot-axhub",
+  ...readdirSync(root).filter((d) => d.startsWith("idea-")),
 ];
 
+/**
+ * 정본 → 템플릿별 사본 위치.
+ * design/axhub.css = Tailwind 4 + HeroUI v3 + axhub design-system 진입점. 각 템플릿의
+ * app/globals.css 가 `@import "./axhub.css";` 로 가져와요 (globals.css 자체는 템플릿 소유).
+ */
+const TARGETS = TEMPLATES.flatMap((t) => [
+  { src: "design/axhub.css", dest: `${t}/app/axhub.css` },
+  { src: "scripts/check-design.sh", dest: `${t}/scripts/check-design.sh` },
+  // axhub 활용 안내 — 템플릿마다 같은 내용 (README · AGENTS.md 가 링크해요)
+  { src: "shared/AXHUB.md", dest: `${t}/AXHUB.md` },
+]);
+
+/** Tailwind 3 시절 파일 — 남아 있으면 옮기기가 덜 끝난 거예요 (스크립트는 지우지 않아요). */
+const STALE = ["app/tokens.css", "tailwind-preset.js", "tailwind.config.ts", "tailwind.config.js"];
+
 let failed = 0;
+
+for (const t of TEMPLATES) {
+  for (const f of STALE) {
+    if (existsSync(join(root, t, f))) {
+      console.error(`✗ ${t}/${f} 는 이제 안 써요 — 지우세요 (Tailwind 4 로 옮기기, design/README.md).`);
+      failed += 1;
+    }
+  }
+}
 
 for (const { src, dest } of TARGETS) {
   const from = join(root, src);
@@ -48,7 +66,7 @@ for (const { src, dest } of TARGETS) {
   }
 
   if (check) {
-    console.error(`✗ ${dest} 가 design/${src.split("/")[1]} 와 달라요.`);
+    console.error(`✗ ${dest} 가 ${src} 와 달라요.`);
     failed += 1;
     continue;
   }

@@ -3,12 +3,13 @@
 import { useRef, useState, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Alert, Button } from '@heroui/react'
+import { ArrowClockwise, ChatCircle, Check, Copy } from '@phosphor-icons/react'
 import type { Turn } from '@/lib/chat-client'
-import { Icon } from './Icon'
 
 /**
  * 말 한 줄. 내 말은 오른쪽 말풍선, AI 답은 왼쪽에 마크다운(굵게·목록·표·코드)으로 그려요.
- * AI 답 아래에는 복사 · 다시 생성 버튼이 붙어요.
+ * AI 답 아래에는 복사 · 다시 생성 버튼이 붙어요. 마크다운 모양은 app/chat.css 의 .chat-md 예요.
  */
 
 type Props = {
@@ -21,24 +22,25 @@ type Props = {
 export function Message({ turn, streaming, isLast, onRegenerate }: Props) {
   if (turn.role === 'user') {
     return (
-      <div className="chat-msg-user">
-        <div className="chat-bubble">{turn.content}</div>
+      <div className="flex justify-end">
+        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl bg-muted px-4 py-2.5">{turn.content}</div>
       </div>
     )
   }
 
   const waiting = streaming && !turn.content
   return (
-    <div className="chat-msg-ai">
-      <div className="chat-avatar" aria-hidden="true">
-        <Icon name="chat" size={15} />
+    <div className="flex gap-3">
+      <div className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary" aria-hidden="true">
+        <ChatCircle size={15} />
       </div>
-      <div className="chat-ai-body">
+      <div className="min-w-0 flex-1 pt-0.5">
         {waiting ? (
-          <span className="chat-typing" aria-label="답을 쓰는 중">
-            <span />
-            <span />
-            <span />
+          // 답을 기다리는 점 세 개
+          <span className="inline-flex gap-1 py-2 text-subtle" role="status" aria-label="답을 쓰는 중">
+            {[0, 150, 300].map((delay) => (
+              <span key={delay} className="size-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: `${delay}ms` }} />
+            ))}
           </span>
         ) : (
           <div className="chat-md">
@@ -48,26 +50,31 @@ export function Message({ turn, streaming, isLast, onRegenerate }: Props) {
           </div>
         )}
 
-        {turn.notice && <p className="chat-notice">{turn.notice}</p>}
+        {turn.notice && <p className="t-small mt-2">{turn.notice}</p>}
 
         {turn.error && (
-          <div className="chat-error" role="alert">
-            <span>{turn.error}</span>
+          <Alert status="danger" className="mt-2 items-center" role="alert">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Description>{turn.error}</Alert.Description>
+            </Alert.Content>
             {isLast && (
-              <button type="button" className="chat-action" onClick={onRegenerate}>
-                <Icon name="retry" size={14} /> 다시 시도
-              </button>
+              <Button size="sm" variant="outline" data-color="danger" onPress={onRegenerate}>
+                <ArrowClockwise />
+                다시 시도
+              </Button>
             )}
-          </div>
+          </Alert>
         )}
 
         {!streaming && !turn.error && turn.content && (
-          <div className="chat-actions">
+          <div className="-ml-2 mt-1.5 flex gap-0.5">
             <CopyButton text={turn.content} />
             {isLast && (
-              <button type="button" className="chat-action" onClick={onRegenerate} title="같은 질문으로 다시 답하기">
-                <Icon name="retry" size={14} /> 다시 생성
-              </button>
+              <Button size="sm" variant="ghost" className="text-muted" onPress={onRegenerate} aria-label="다시 생성 — 같은 질문으로 다시 답하기">
+                <ArrowClockwise />
+                다시 생성
+              </Button>
             )}
           </div>
         )}
@@ -77,13 +84,14 @@ export function Message({ turn, streaming, isLast, onRegenerate }: Props) {
 }
 
 /** text 는 문자열 또는 누를 때 읽을 함수예요 (코드 블록은 화면에 그려진 글을 읽어요). */
-function CopyButton({ text, label = '복사' }: { text: string | (() => string); label?: string }) {
+function CopyButton({ text, label = '복사', className }: { text: string | (() => string); label?: string; className?: string }) {
   const [done, setDone] = useState(false)
   return (
-    <button
-      type="button"
-      className="chat-action"
-      onClick={async () => {
+    <Button
+      size="sm"
+      variant="ghost"
+      className={className ?? 'text-muted'}
+      onPress={async () => {
         try {
           await navigator.clipboard.writeText(typeof text === 'function' ? text() : text)
           setDone(true)
@@ -93,20 +101,23 @@ function CopyButton({ text, label = '복사' }: { text: string | (() => string);
         }
       }}
     >
-      <Icon name={done ? 'check' : 'copy'} size={14} /> {done ? '복사됨' : label}
-    </button>
+      {done ? <Check /> : <Copy />}
+      {done ? '복사됨' : label}
+    </Button>
   )
 }
 
-/** 코드 블록 — 오른쪽 위에 복사 버튼을 붙여요. */
+/** 코드 블록 — 오른쪽 위에 복사 버튼을 붙여요 (마우스를 올리면 보여요. 터치 화면은 늘 보여요). */
 function CodeBlock({ children }: { children?: ReactNode }) {
   const ref = useRef<HTMLPreElement>(null)
   return (
-    <div className="chat-code">
+    <div className="group relative">
       <pre ref={ref}>{children}</pre>
-      <div className="chat-code-copy">
-        <CopyButton text={() => ref.current?.textContent ?? ''} label="코드 복사" />
-      </div>
+      <CopyButton
+        text={() => ref.current?.textContent ?? ''}
+        label="코드 복사"
+        className="absolute top-1.5 right-1.5 bg-content opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+      />
     </div>
   )
 }

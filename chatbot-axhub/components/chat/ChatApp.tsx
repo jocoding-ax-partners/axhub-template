@@ -12,8 +12,9 @@ import {
   type Conversation,
   type Turn,
 } from '@/lib/chat-client'
+import { Button, Chip } from '@heroui/react'
+import { ChatCircle, List, Plus } from '@phosphor-icons/react'
 import { Composer, type ComposerHandle } from './Composer'
-import { Icon } from './Icon'
 import { MessageList } from './MessageList'
 import { Sidebar, type Visitor } from './Sidebar'
 
@@ -69,8 +70,9 @@ function ChatScreen({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [followKey, setFollowKey] = useState('init')
-  // 사이드바: 'auto' 는 넓은 화면에선 열림, 좁은 화면에선 닫힘 (CSS 가 정해요). 누르면 true/false 로 고정.
-  const [sidebar, setSidebar] = useState<'auto' | boolean>('auto')
+  // 사이드바: 넓은 화면(768px 이상)은 옆에 붙어 있고 접을 수 있어요. 좁은 화면은 서랍(Drawer)으로 열려요.
+  const [desktopOpen, setDesktopOpen] = useState(true)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const composerRef = useRef<ComposerHandle>(null)
 
@@ -163,7 +165,7 @@ function ChatScreen({
   }
 
   function closeSidebarOnMobile() {
-    if (window.matchMedia('(max-width: 767px)').matches) setSidebar(false)
+    setMobileOpen(false)
   }
 
   function startNew() {
@@ -188,8 +190,8 @@ function ChatScreen({
   }
 
   function toggleSidebar() {
-    const desktop = window.matchMedia('(min-width: 768px)').matches
-    setSidebar((s) => (s === 'auto' ? !desktop : !s))
+    if (window.matchMedia(DESKTOP).matches) setDesktopOpen((o) => !o)
+    else setMobileOpen((o) => !o)
   }
 
   // Esc 로 답 멈추기
@@ -202,18 +204,23 @@ function ChatScreen({
   }, [])
 
   const empty = (
-    <div className="chat-column chat-empty">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center gap-4 px-5 py-6 text-center">
       {setup ?? (
         <>
-          <div className="chat-empty-mark" aria-hidden="true">
-            <Icon name="chat" size={26} />
+          <div className="grid size-13 place-items-center rounded-full bg-primary-soft text-primary" aria-hidden="true">
+            <ChatCircle size={26} />
           </div>
-          <h1 className="chat-empty-title">{greeting}</h1>
-          <div className="chat-suggestions">
+          <h1 className="t-section-title">{greeting}</h1>
+          <div className="mt-2 grid w-full grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
             {suggestions.map((s) => (
-              <button key={s} type="button" className="chat-suggestion" onClick={() => send(s)}>
+              <Button
+                key={s}
+                variant="outline"
+                className="h-auto w-full justify-start whitespace-normal px-4 py-3.5 text-left font-normal"
+                onPress={() => send(s)}
+              >
                 {s}
-              </button>
+              </Button>
             ))}
           </div>
         </>
@@ -222,10 +229,13 @@ function ChatScreen({
   )
 
   return (
-    <div className="chat-app">
+    // 화면 전체 높이를 꽉 채우고, 사이드바·상단바·입력창은 제자리 — 가운데 대화만 스크롤돼요.
+    <div className="flex h-dvh overflow-hidden bg-content text-default">
       <Sidebar
         appName={appName}
-        open={sidebar}
+        desktopOpen={desktopOpen}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
         conversations={conversations}
         activeId={activeId}
         visitor={visitor}
@@ -235,30 +245,31 @@ function ChatScreen({
         onClose={toggleSidebar}
       />
 
-      <main className="chat-main">
-        <header className="chat-topbar">
-          <button
-            type="button"
-            className="chat-icon-btn chat-sidebar-toggle"
-            data-sidebar={String(sidebar)}
-            onClick={toggleSidebar}
+      <main className="relative flex min-w-0 flex-1 flex-col">
+        <header className="flex h-[var(--topbar-height)] shrink-0 items-center gap-2 border-b border-default px-3">
+          {/* 넓은 화면에서 사이드바가 열려 있으면 숨겨요 (사이드바 안에 닫기 버튼이 있어요). */}
+          <Button
+            isIconOnly
+            variant="ghost"
+            size="sm"
+            className={desktopOpen ? 'md:hidden' : undefined}
+            onPress={toggleSidebar}
             aria-label="사이드바 열기"
-            title="사이드바"
           >
-            <Icon name="menu" />
-          </button>
-          <span className="chat-topbar-title">{active?.title ?? assistantName}</span>
-          <span className="chat-model" title="쓰는 AI 모델">
-            {modelLabel}
-          </span>
-          <button type="button" className="chat-icon-btn" onClick={startNew} aria-label="새 대화" title="새 대화">
-            <Icon name="plus" />
-          </button>
+            <List size={20} weight="bold" />
+          </Button>
+          <span className="t-card-title min-w-0 flex-1 truncate">{active?.title ?? assistantName}</span>
+          <Chip size="sm" className="min-w-0 max-w-[45%]" title="쓰는 AI 모델">
+            <Chip.Label className="truncate">{modelLabel}</Chip.Label>
+          </Chip>
+          <Button isIconOnly variant="ghost" size="sm" onPress={startNew} aria-label="새 대화">
+            <Plus size={18} weight="bold" />
+          </Button>
         </header>
 
         <MessageList turns={turns} streaming={busy} followKey={followKey} empty={empty} onRegenerate={regenerate} />
 
-        <div className="chat-composer-wrap">
+        <div className="shrink-0 px-5 pb-3">
           <Composer
             ref={composerRef}
             busy={busy}
@@ -267,12 +278,16 @@ function ChatScreen({
             onSend={send}
             onStop={stop}
           />
-          <p className="chat-hint">
+          <p className="t-caption mx-auto mt-2 max-w-3xl text-center">
             AI 답은 틀릴 수 있어요. 중요한 내용은 꼭 확인하세요.
-            <span className="chat-hint-keys"> · Enter 보내기 · Shift+Enter 줄바꿈 · Esc 멈추기</span>
+            {/* 휴대폰엔 키보드 안내가 필요 없어요 */}
+            <span className="max-md:hidden"> · Enter 보내기 · Shift+Enter 줄바꿈 · Esc 멈추기</span>
           </p>
         </div>
       </main>
     </div>
   )
 }
+
+/** 넓은 화면 기준 — 이보다 좁으면 사이드바가 서랍으로 열려요 (Tailwind md 와 같은 값). */
+const DESKTOP = '(min-width: 768px)'

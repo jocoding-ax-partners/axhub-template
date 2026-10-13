@@ -1,0 +1,27 @@
+version: axhub/v1
+name: idea-sales-meeting-log
+# 고객사·미팅 기록을 저장할 전용 PostgreSQL. 배포하면 axhub 가 발급하고
+# DATABASE_URL / DIRECT_DATABASE_URL 을 자동으로 넣어 줘요. 표는 앱이 처음 열릴 때 스스로 만들어요.
+database:
+  engine: postgres
+runtime:
+  port: 3000
+  health_path: /healthz
+build:
+  strategy: auto
+  framework: nextjs
+  dockerfile: Dockerfile
+  deploy_method: docker
+env:
+  optional:
+    - name: APPHUB_API_URL
+      scope: runtime
+    - name: APPHUB_APP_SLUG
+      scope: runtime
+    - name: APPHUB_TENANT
+      scope: runtime
+
+# 배포 전 검사. 디자인 토큰 규칙을 어기면 여기서 걸려요.
+ci:
+  commands:
+    - bash scripts/check-design.sh

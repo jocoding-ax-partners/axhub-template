@@ -1,7 +1,8 @@
 'use client'
 
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
-import { Icon } from './Icon'
+import { Button, InputGroup } from '@heroui/react'
+import { ArrowUp, Stop } from '@phosphor-icons/react'
 
 /**
  * 입력창. 글이 길어지면 위로 늘어나고(최대 8줄쯤), Enter 로 보내고 Shift+Enter 로 줄을 바꿔요.
@@ -55,39 +56,43 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
   return (
     <form
-      className="chat-composer"
-      data-disabled={disabled || undefined}
+      className="mx-auto w-full max-w-3xl"
       onSubmit={(e) => {
         e.preventDefault()
         submit()
       }}
     >
-      <textarea
-        ref={areaRef}
-        className="chat-input"
-        rows={1}
-        value={value}
-        disabled={disabled}
-        placeholder={placeholder ?? '메시지를 입력하세요'}
-        aria-label="메시지 입력"
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          // 한글 조합 중 Enter 는 글자 확정이라 보내지 않아요.
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault()
-            submit()
-          }
-        }}
-      />
-      {busy ? (
-        <button type="button" className="chat-send" onClick={onStop} aria-label="답 멈추기" title="멈추기">
-          <Icon name="stop" size={16} />
-        </button>
-      ) : (
-        <button type="submit" className="chat-send" disabled={disabled || !value.trim()} aria-label="보내기" title="보내기 (Enter)">
-          <Icon name="send" size={18} />
-        </button>
-      )}
+      {/* 테두리·포커스·잠김 모양은 HeroUI InputGroup 이 그려요. 여러 줄이 되면 버튼은 아래에 붙어요. */}
+      <InputGroup fullWidth className="items-end rounded-3xl py-1 pl-2 pr-1.5" isDisabled={disabled}>
+        <InputGroup.TextArea
+          ref={areaRef}
+          className="resize-none py-2 text-body-02"
+          rows={1}
+          value={value}
+          disabled={disabled}
+          placeholder={placeholder ?? '메시지를 입력하세요'}
+          aria-label="메시지 입력"
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            // 한글 조합 중 Enter 는 글자 확정이라 보내지 않아요.
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              submit()
+            }
+          }}
+        />
+        <InputGroup.Suffix className="self-end border-0 px-0 pt-0 pb-0.5">
+          {busy ? (
+            <Button isIconOnly size="sm" className="rounded-full" onPress={onStop} aria-label="답 멈추기">
+              <Stop size={14} />
+            </Button>
+          ) : (
+            <Button type="submit" isIconOnly size="sm" className="rounded-full" isDisabled={disabled || !value.trim()} aria-label="보내기">
+              <ArrowUp size={18} weight="bold" />
+            </Button>
+          )}
+        </InputGroup.Suffix>
+      </InputGroup>
     </form>
   )
 })

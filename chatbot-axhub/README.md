@@ -1,6 +1,6 @@
 # chatbot-axhub
 
-axhub 위에서 바로 굴러가는 **AI 챗봇** 템플릿이에요. **Next.js 16 + React 19 + Tailwind 3** 위에 Claude 대화 화면이 이미 붙어 있어요.
+axhub 위에서 바로 굴러가는 **AI 챗봇** 템플릿이에요. **Next.js 16 + React 19 + Tailwind 4 + HeroUI v3** 위에 Claude 대화 화면이 이미 붙어 있어요. 화면은 axhub 콘솔과 같은 디자인 시스템(`@jocoding-ax-partners/design-system`)으로 그려져요.
 API 키만 넣으면 바로 대화가 되고, 챗봇의 성격·말투는 `config/assistant.ts` 한 파일에서 바꿔요.
 **Claude Code** 로 바이브코딩하면서 axhub 에 한 줄 명령으로 배포할 수 있게 미리 세팅돼 있어요.
 
@@ -43,7 +43,7 @@ npm run dev
 | 쓰는 모델 (더 깊게·더 싸게) | 환경변수 `AI_MODEL` (기본 `claude-sonnet-5-5`) |
 | 화면 뼈대·대화 흐름 (보내기·다시 생성·대화 목록) | `components/chat/ChatApp.tsx` |
 | 말 한 줄 모양 · 입력창 · 사이드바 | `components/chat/Message.tsx` · `Composer.tsx` · `Sidebar.tsx` |
-| 크기·간격·폭 | `app/chat.css` (대화 폭 `--chat-width`, 사이드바 폭 `--chat-sidebar`) |
+| 크기·간격·폭 | 각 `components/chat/*` 의 Tailwind 클래스 (대화 폭 `max-w-3xl`), AI 답 마크다운 모양은 `app/chat.css` |
 | Claude 호출 방식 (답 길이·옵션) | `app/api/chat/route.ts` |
 
 동작 방식은 단순해요. 브라우저가 대화 전체를 `POST /api/chat` 으로 보내면, 서버가 Claude 를 불러 답을 글자 단위로 흘려 보내요.
@@ -293,13 +293,14 @@ axhub deploy create --app <앱 슬러그> --execute     # 넣은 뒤 다시 배�
 | `AxHubClient requires tokenType` 에러 | 직접 `new AxHubClient({ token })` 만들 때 발생. 그냥 `makeAxhub()` 쓰세요 — tokenType 자동 |
 | 배포했는데 항상 "로그인하지 않았어요" | 정상일 수 있어요(§4-A ⑤). 로그인 버튼으로 시작점에 가 보세요. 로그인 뒤에도 그대로면 `/api/...` 가 아닌 페이지 요청에서 `headers()` 로 `x-axhub-user-id` 가 오는지 확인 |
 | `queryConnector` 가 401 / "멤버가 아니에요" | 퍼블릭·커스텀 도메인 앱에선 사용자 쿠키가 없어 미지원 — 회사 앱 주소에서 확인 |
-| Tailwind class 가 안 먹음 | `tailwind.config.ts` 의 `content` 경로에 새 폴더 추가 |
+| Tailwind class 가 안 먹음 | Tailwind 4 는 설정 파일 없이 프로젝트 폴더를 알아서 훑어요. `node_modules` 안 패키지 클래스만 `app/axhub.css` 의 `@source` 로 추가돼 있어요 — 값이 없는 클래스(`text-gray-500` 대신 `text-muted`)인지 먼저 확인 |
 
 ## 8. 관련 자료
 
 - [axhub 가이드](https://github.com/jocoding-ax-partners/axhub)
 - [Next.js 16 docs](https://nextjs.org/docs)
-- [Tailwind 3 docs](https://v3.tailwindcss.com)
+- [Tailwind 4 docs](https://tailwindcss.com/docs)
+- [HeroUI v3 컴포넌트](https://v3.heroui.com/docs/react/components) — v2 문서와 섞지 마세요
 
 ## 신뢰 모델 (이 템플릿)
 

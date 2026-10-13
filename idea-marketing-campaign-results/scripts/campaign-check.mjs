@@ -1,0 +1,46 @@
+// 캠페인 규칙 검사 — npm run check:logic. lib/campaign.ts 를 바꾸면 돌려 보세요.
+import assert from 'node:assert/strict'
+import { cpa, ctr, formatPct, formatWon, kstToday, parseCount, periodDays, sortOf, validateCampaign, validateDaily } from '../lib/campaign.ts'
+
+const camp = (o = {}) => validateCampaign({ name: '가을 검색광고', channel: '네이버 검색광고', start: '2026-10-01', end: '2026-10-31', cost: '1,500,000', ...o })
+assert.deepEqual(camp().value, { name: '가을 검색광고', channel: '네이버 검색광고', start: '2026-10-01', end: '2026-10-31', cost: 1500000 })
+assert.equal(camp({ name: '  ' }).ok, false, '이름 없음')
+assert.equal(camp({ channel: '' }).ok, false, '채널 없음')
+assert.equal(camp({ name: 'x'.repeat(101) }).ok, false, '이름 길이')
+assert.equal(camp({ start: '2026-02-30' }).ok, false, '없는 날짜')
+assert.equal(camp({ end: '2026-09-30' }).ok, false, '종료일이 앞섬')
+assert.equal(camp({ start: '2026-01-01', end: '2027-01-01' }).ok, true, '366일까지')
+assert.equal(camp({ start: '2026-01-01', end: '2027-01-02' }).ok, false, '기간 상한')
+assert.equal(camp({ end: '2026-10-01' }).ok, true, '하루짜리')
+assert.equal(camp({ cost: '-1' }).ok, false, '음수 비용')
+assert.equal(camp({ cost: '1.5' }).ok, false, '소수 비용')
+assert.equal(camp({ cost: '0' }).value.cost, 0, '비용 0 허용')
+assert.equal(camp({ cost: '1000000000001' }).ok, false, '비용 상한')
+
+const period = { start: '2026-10-01', end: '2026-10-31' }
+const day = (o = {}) => validateDaily({ day: '2026-10-08', impressions: '10,000', clicks: '250', conversions: '12', ...o }, period)
+assert.deepEqual(day().value, { day: '2026-10-08', impressions: 10000, clicks: 250, conversions: 12 })
+assert.equal(day({ day: '2026-09-30' }).ok, false, '기간 앞')
+assert.equal(day({ day: '2026-11-01' }).ok, false, '기간 뒤')
+assert.equal(day({ day: '2026-10-31' }).ok, true, '종료일 당일')
+assert.equal(day({ clicks: '10001' }).ok, false, '클릭 > 노출')
+assert.equal(day({ conversions: '300' }).ok, true, '전환은 클릭보다 많아도 돼요(조회 후 전환)')
+assert.equal(day({ impressions: '' }).ok, false, '빈 값')
+assert.equal(day({ impressions: '1e3' }).ok, false, '지수 표기')
+assert.equal(day({ impressions: '0', clicks: '0', conversions: '0' }).ok, true, '모두 0')
+
+assert.equal(parseCount(' 1,234 ', 10_000), 1234)
+assert.equal(parseCount('10001', 10_000), null)
+assert.equal(ctr({ clicks: 25, impressions: 1000 }), 2.5)
+assert.equal(ctr({ clicks: 0, impressions: 0 }), null, '노출 0')
+assert.equal(cpa({ cost: 100000, conversions: 8 }), 12500)
+assert.equal(cpa({ cost: 100000, conversions: 0 }), null, '전환 0')
+assert.equal(formatPct(2.5), '2.50%')
+assert.equal(formatWon(12499.6), '12,500원')
+assert.equal(formatWon(null), '–')
+assert.equal(periodDays('2026-10-01', '2026-10-31'), 31)
+assert.equal(sortOf('cpa'), 'cpa')
+assert.equal(sortOf('toString'), 'recent', '이상한 정렬 값')
+assert.equal(kstToday(new Date('2026-12-31T15:30:00Z')), '2027-01-01', 'KST 자정 넘김')
+
+console.log('✓ 캠페인 규칙 검사 통과')

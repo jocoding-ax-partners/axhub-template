@@ -2,7 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Turn } from '@/lib/chat-client'
-import { Icon } from './Icon'
+import { Button } from '@heroui/react'
+import { ArrowDown } from '@phosphor-icons/react'
 import { Message } from './Message'
 
 /**
@@ -48,10 +49,10 @@ export function MessageList({ turns, streaming, followKey, empty, onRegenerate }
   }, [turns])
 
   return (
-    <div className="chat-scroll-wrap">
+    <div className="relative min-h-0 flex-1">
       <div
         ref={scrollRef}
-        className="chat-scroll"
+        className="h-full overflow-y-auto overscroll-contain"
         onScroll={(e) => {
           const el = e.currentTarget
           const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_GAP
@@ -62,7 +63,7 @@ export function MessageList({ turns, streaming, followKey, empty, onRegenerate }
         {turns.length === 0 ? (
           empty
         ) : (
-          <div className="chat-column chat-thread" aria-live="polite">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-5 pt-6 pb-14" aria-live="polite">
             {turns.map((t, i) => (
               <Message
                 key={t.id}
@@ -77,17 +78,19 @@ export function MessageList({ turns, streaming, followKey, empty, onRegenerate }
       </div>
 
       {showDown && turns.length > 0 && (
-        <button
-          type="button"
-          className="chat-scroll-down"
-          onClick={() => {
+        <Button
+          isIconOnly
+          variant="outline"
+          size="sm"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-content shadow-md"
+          onPress={() => {
             stickRef.current = true
             toBottom()
           }}
           aria-label="맨 아래로"
         >
-          <Icon name="down" size={16} />
-        </button>
+          <ArrowDown />
+        </Button>
       )}
     </div>
   )
