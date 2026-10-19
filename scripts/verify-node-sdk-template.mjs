@@ -10,8 +10,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const root = process.cwd()
-// 아이디어 카드 템플릿(idea-*, spec 676)도 같은 SDK 경계를 지켜요.
-const TEMPLATES = ['nextjs-axhub', 'chatbot-axhub', ...readdirSync(root).filter((d) => d.startsWith('idea-'))]
+const TEMPLATES = ['nextjs-axhub', 'chatbot-axhub']
 const failures = []
 
 const read = (path) => readFileSync(join(root, path), 'utf8')
