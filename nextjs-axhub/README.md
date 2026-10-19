@@ -207,7 +207,7 @@ axhub deploy logs --app my-app-slug --follow      # 앱 로그 (안 뜰 때 원�
 
 `axhub.yaml` 을 새로 쓰거나 고칠 때는 `axhub.yaml.example` 에 axhub.yaml 에서 쓸 수 있는 필드와 제약을 모두 적어뒀으니 먼저 참고하세요.
 
-빌드는 repo 의 `Dockerfile`(`output:"standalone"` → `node server.js`)로 떠요.
+빌드는 repo 의 `Dockerfile`(`output:"standalone"` → `node server.js`)로 떠요. `package-lock.json` 이 있으면 `npm ci` 로 잠긴 버전 그대로 설치하니, 패키지를 추가하거나 바꿨다면 바뀐 `package-lock.json` 도 함께 커밋하세요. 잠금 파일과 `package.json` 이 어긋나면 빌드가 실패해요.
 
 ## 6. 환경변수 / 설정
 

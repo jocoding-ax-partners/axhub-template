@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Button, Drawer } from '@heroui/react'
 import { List } from '@phosphor-icons/react'
 import { NavList, PageContainer, Sidebar, TopBar, type NavLinkRenderer, type NavSection } from '@jocoding-ax-partners/react'
-import { NAVIGATION } from '@/config/navigation'
+import { APP_ICON, NAVIGATION } from '@/config/navigation'
 
 /**
  * 셸의 브라우저 쪽 — 상단바 · 사이드바 · 좁은 화면 서랍 · 본문 여백.
@@ -16,7 +16,7 @@ import { NAVIGATION } from '@/config/navigation'
  * 화면을 추가할 땐 이 파일이 아니라 <AppShell> 안에 내용을 넣으세요.
  * 메뉴를 늘리려면 config/navigation.ts 를 고치세요.
  */
-export function Shell({ appName, account, children }: { appName: string; account: ReactNode; children: ReactNode }) {
+export function Shell({ appName, account, isAdmin = false, children }: { appName: string; account: ReactNode; isAdmin?: boolean; children: ReactNode }) {
   const path = usePathname()
   // 서랍을 연 화면의 주소를 기억해요. 다른 화면으로 이동하면 주소가 달라져 저절로 닫혀요.
   const [openedAt, setOpenedAt] = useState<string | null>(null)
@@ -24,7 +24,7 @@ export function Shell({ appName, account, children }: { appName: string; account
   const sections: NavSection[] = [
     {
       key: 'main',
-      items: NAVIGATION.map((item) => ({
+      items: NAVIGATION.filter((item) => isAdmin || !item.adminOnly).map((item) => ({
         key: item.href,
         href: item.href,
         icon: item.icon,
@@ -82,7 +82,9 @@ export function Shell({ appName, account, children }: { appName: string; account
 function Brand({ appName }: { appName: string }) {
   return (
     <Link href="/" className="flex h-[var(--topbar-height)] min-w-0 items-center gap-2.5 px-2 text-default lg:px-5">
-      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-caption-01 font-bold text-on-primary">ax</span>
+      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-on-primary">
+        <APP_ICON size={16} weight="fill" />
+      </span>
       <span className="truncate text-body-03 font-semibold">{appName}</span>
     </Link>
   )
