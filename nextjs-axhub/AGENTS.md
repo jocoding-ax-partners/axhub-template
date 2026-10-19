@@ -166,9 +166,37 @@ export function DeleteButton({ onDelete }: { onDelete: () => Promise<void> }) {
 
 - 새 화면은 셸 안에 내용만 넣어요.
 - 사이드바 메뉴는 `config/navigation.ts` 배열에 한 줄 추가해요 (아이콘은 phosphor 컴포넌트).
+- 관리자 화면 메뉴는 `adminOnly: true` 를 붙이면 관리자(`me().is_admin` — 앱 소유자·회사 관리자)가 아닌 사람에게 안 보여요. 메뉴만 숨기는 것이라 그 화면도 서버에서 권한을 따로 확인해요.
 - 상단바·사이드바는 이미 제자리에 고정돼 있고(`sticky`) 페이지 전체가 스크롤돼요. 화면 안에 `h-screen`·`overflow-auto` 로 스크롤 상자를 따로 만들지 마세요 — 스크롤이 두 겹이 돼요.
 - 좁은 화면 메뉴(서랍)는 `components/Shell.tsx` 가 같은 `config/navigation.ts` 로 그려요.
 - 없는 주소는 `app/not-found.tsx`, 화면 오류는 `app/error.tsx` 가 보여줘요. 데이터가 없을 때는 `notFound()` 를 불러요.
+
+### 업무 앱 완성도 — 시제품처럼 보이지 않게
+
+사용자는 이미 잘 만든 SaaS 를 써 봤어요. 아래를 지키면 "만들어 본 앱"이 아니라 "회사에서 쓰는 앱"으로 보여요.
+
+- **앱 얼굴** — `config/navigation.ts` 의 `APP_ICON` 을 앱이 하는 일에 맞는 아이콘으로 바꾸고, 메뉴마다 다른 아이콘을 줘요. 앱 이름은 사람이 읽는 이름(예: "거래처 관리")이에요. `axhub apps create --name` 으로 정하면 배포 때 `APP_NAME` 으로 들어와 셸에 그대로 보여요 — 화면에 이름을 따로 박거나 슬러그(`my-crm`)를 쓰지 않아요.
+- **첫 화면은 요약** — 맨 위에 `StatCard`(`@/components/ax`) 3~4개를 `grid grid-cols-2 gap-4 lg:grid-cols-4` 로 놓고(숫자 + 비교 한 줄, 누르면 그 조건의 목록으로 — `StatCard` 는 링크 속성이 없어서 `<Link>` 로 감싸요), 그 아래 "내가 처리할 일"(승인 대기·기한 임박 — 항목마다 바로 처리 버튼)과 최근 활동을 둬요. 비중·추세는 `ProgressBar`·`Meter` 나 너비 %인 막대로 그려요(차트 패키지 설치 금지).
+- **목록** — `Table` 위에 상태 `Tabs`(전체·대기·완료처럼, 탭마다 건수) + `SearchField` + `Select` 필터. 행을 누르면 오른쪽 `Drawer` 에서 상세를 보고 바로 처리해요. 금액·수량 열은 오른쪽 정렬 + `tabular-nums`, 상태는 색 있는 `Chip`.
+- **사람** — 이름만 쓰지 말고 `Avatar`(이름 첫 글자) + 이름 + 부서로 보여줘요. 사람 고르기는 `ComboBox` 로 이름 검색, 후보와 저장은 회사 구성원 목록 `sdk.tenants.membersDirectory`(가입한 활성 멤버, `userId`)로 해요. 부서 이름은 멤버의 `groupId` 로 `orgDirectory` 에서 찾고, 조직도가 비어 있으면(조직도 연동 없는 회사) 부서를 빼요 — `orgDirectory` 의 `scimUserId` 는 사용자 ID 가 아니라 저장·알림에 못 써요. 저장은 사용자 ID + 그때 이름을 함께(이름이 바뀌거나 퇴사해도 기록이 읽혀요).
+- **입력** — 브라우저 기본 `<select>` · `<input type="date">` 대신 `Select` · `DatePicker`. 칸이 많으면 `Card` 로 묶음을 나누고, 저장 버튼은 폼 끝 오른쪽에 둬요.
+- **예시 데이터는 진짜처럼** — 사람 6~8명(흔한 한국 이름, 부서 3~4개), 목록마다 12~25건, 최근 90일에 퍼진 날짜, 오늘·이번 주 할 일과 기한 지난 건, 상태가 골고루 섞이게. 예시 사람은 가상 이름으로 저장하되 일부 담당자는 지금 로그인한 사람으로 넣어 "내가 처리할 일"이 비지 않게 하고, 예시 데이터로 알림·메일을 보내지 않아요. 행에 `is_sample` 열을 두고, "예시" 꼬리표를 행마다 붙이지 않아요. 안내와 "예시 데이터 지우기"는 첫 화면 위 작은 `Alert` 한 줄에만 둬요.
+- **화면 말투** — 영어 상태값(`pending`)·`ID`·`null`·개발 용어를 화면에 보이지 않아요. 상태와 버튼은 한국어 동사로("승인", "반려", "처리 완료").
+
+```tsx
+// 첫 화면 요약 줄 (서버 page.tsx 에서 그대로 써도 돼요)
+import Link from 'next/link'
+import { StatCard } from '@/components/ax'
+
+<div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <Link href="/approvals?status=pending">
+    <StatCard label="승인 대기" value="5건" sub="가장 오래된 건 3일 전" />
+  </Link>
+  <StatCard label="이번 달 사용" value="42일" sub="지난달보다 6일 많아요" />
+  <StatCard label="오늘 휴가" value="3명" sub="영업팀 2 · 인사팀 1" />
+  <StatCard label="남은 연차 평균" value="9.5일" />
+</div>
+```
 
 ## Stack
 Next.js 16 (App Router · RSC · Server Actions) · React 19 · TypeScript strict · Tailwind 4 · HeroUI v3 + axhub design-system · Node 20+ ·

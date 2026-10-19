@@ -40,7 +40,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
   )
 
   return (
-    <Shell appName={APP_NAME} account={account}>
+    <Shell appName={APP_NAME} account={account} isAdmin={visitor.is_admin}>
       {children}
     </Shell>
   )
