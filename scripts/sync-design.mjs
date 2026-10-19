@@ -8,19 +8,15 @@
  * bootstrap 은 템플릿 폴더 하나만 복사하므로 템플릿마다 각자 사본을 가져야 해요.
  * 손으로 고치면 갈라지니, 항상 design/ 만 고치고 이 스크립트를 돌리세요.
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
 
-// 템플릿 폴더 — 아이디어 카드의 「바로 시작」 템플릿(idea-*, spec 676)도 같은 정본을 받아요.
-const TEMPLATES = [
-  "nextjs-axhub",
-  "chatbot-axhub",
-  ...readdirSync(root).filter((d) => d.startsWith("idea-")),
-];
+// 템플릿 폴더
+const TEMPLATES = ["nextjs-axhub", "chatbot-axhub"];
 
 /**
  * 정본 → 템플릿별 사본 위치.

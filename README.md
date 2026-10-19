@@ -13,38 +13,6 @@
 | [**nextjs-axhub**](./nextjs-axhub) | 풀스택 웹앱 (가장 흔한 선택) | Next 16 + React 19 + Tailwind 4 + HeroUI v3 + axhub 디자인 시스템 | 서버 (SSR) |
 | [**chatbot-axhub**](./chatbot-axhub) | AI 챗봇 (사내 도우미, 상담, Q&A) | nextjs-axhub 와 같음 + Claude (`@anthropic-ai/sdk`) | 서버 (SSR) |
 
-### 업무 앱 템플릿 (아이디어 카드 「바로 시작」 전용)
-
-axhub 콘솔의 아이디어 카드에서 「바로 시작」 을 누르면 아래 완성된 업무 앱으로 시작해요. 「처음부터 만들기」 템플릿 목록에는 보이지 않아요. 바탕은 `nextjs-axhub` 와 같고 DB 를 켜 둔 상태예요.
-
-| 직군 | 템플릿 | 하는 일 |
-|------|--------|--------|
-| 인사 | [**idea-hr-leave-request**](./idea-hr-leave-request) | 휴가 신청 · 관리자 승인 · 남은 연차 |
-| 인사 | [**idea-hr-notice-read**](./idea-hr-notice-read) | 사내 공지 · 읽음 확인 · 공지별 읽음률 |
-| 인사 | [**idea-hr-onboarding-checklist**](./idea-hr-onboarding-checklist) | 입사자 온보딩 체크리스트 · 진행률 |
-| 인사 | [**idea-hr-training-signup**](./idea-hr-training-signup) | 사내 교육 신청 · 정원 마감 · 명단 CSV |
-| 인사 | [**idea-hr-interview-scorecard**](./idea-hr-interview-scorecard) | 면접 평가표 · 면접관별 점수 · 결과 기록 |
-| 영업 | [**idea-sales-meeting-log**](./idea-sales-meeting-log) | 고객사별 미팅 기록 · 다음 연락일 |
-| 영업 | [**idea-sales-quote-request**](./idea-sales-quote-request) | 견적 요청 접수 · 담당자 배정 · 상태 |
-| 영업 | [**idea-sales-pipeline-board**](./idea-sales-pipeline-board) | 영업 파이프라인 보드 · 단계별 합계 |
-| 영업 | [**idea-sales-monthly-results**](./idea-sales-monthly-results) | 계약 입력 · 월간 실적 · 담당자별 비중 |
-| 영업 | [**idea-sales-sample-shipping**](./idea-sales-sample-shipping) | 샘플·자료 발송 기록 · 후속 연락일 |
-| 총무 | [**idea-ops-room-booking**](./idea-ops-room-booking) | 회의실 시간표 예약 · 겹침 방지 |
-| 총무 | [**idea-ops-equipment-rental**](./idea-ops-equipment-rental) | 장비 대여·반납 · 반납 지연 표시 |
-| 총무 | [**idea-ops-supply-request**](./idea-ops-supply-request) | 비품 신청 · 지급·반려 · 재고 부족 표시 |
-| 총무 | [**idea-ops-facility-report**](./idea-ops-facility-report) | 시설 고장 신고 · 사진 · 처리 상태 (파일 저장 사용) |
-| 총무 | [**idea-ops-parcel-pickup**](./idea-ops-parcel-pickup) | 택배·우편 도착 등록 · 수령 처리 |
-| 재무 | [**idea-finance-expense-claim**](./idea-finance-expense-claim) | 경비·영수증 사진 · 승인 · 월별 정산 CSV (파일 저장 사용) |
-| 재무 | [**idea-finance-corporate-card**](./idea-finance-corporate-card) | 법인카드 사용 내역 · 용도 미기재 · 월별 합계 CSV |
-| 재무 | [**idea-finance-purchase-approval**](./idea-finance-purchase-approval) | 구매 요청 · 결재 · 고액 표시 |
-| 재무 | [**idea-finance-department-budget**](./idea-finance-department-budget) | 부서 예산 대비 집행률 · 90% 경고 |
-| 재무 | [**idea-finance-vendor-payments**](./idea-finance-vendor-payments) | 거래처 지급 일정 · 이번 주·지연 · 지급 완료 |
-| 마케팅 | [**idea-marketing-event-signup**](./idea-marketing-event-signup) | 이벤트 참가자 등록·CSV 가져오기 · 출석 체크 |
-| 마케팅 | [**idea-marketing-content-calendar**](./idea-marketing-content-calendar) | 콘텐츠 발행 캘린더 · 채널별 일정 |
-| 마케팅 | [**idea-marketing-campaign-results**](./idea-marketing-campaign-results) | 캠페인 일별 실적 · 클릭률·전환당 비용 비교 |
-| 마케팅 | [**idea-marketing-customer-survey**](./idea-marketing-customer-survey) | 고객 설문 만들기 · 응답 · 결과 집계 |
-| 마케팅 | [**idea-marketing-design-request**](./idea-marketing-design-request) | 디자인 요청 접수 · 작업 단계 · 결과 파일 (파일 저장 사용) |
-
 > 모든 템플릿은 Next.js 하나를 바탕으로 해요. 용도별 템플릿은 화면과 기능만 다르고 뼈대·디자인·배포 방식은 같아요.
 >
 > 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요.
@@ -131,7 +99,7 @@ axhub bootstrap 으로 앱을 만들면, 저장소에 올리기 전에 템플릿
 
 새 템플릿을 추가하고 싶으세요?
 
-1. `nextjs-axhub` 를 복사해서 시작해요. 디자인 파일(`app/axhub.css` · `scripts/check-design.sh` · `AXHUB.md`)은 `node scripts/sync-design.mjs` 가 뿌려요 — `nextjs-axhub`·`chatbot-axhub`·`idea-*` 폴더는 자동으로 잡혀요. 다른 이름이면 그 스크립트의 `TEMPLATES` 에 추가해요.
+1. `nextjs-axhub` 를 복사해서 시작해요. 디자인 파일(`app/axhub.css` · `scripts/check-design.sh` · `AXHUB.md`)은 `node scripts/sync-design.mjs` 가 뿌려요 — `nextjs-axhub`·`chatbot-axhub` 폴더는 자동으로 잡혀요. 다른 이름이면 그 스크립트의 `TEMPLATES` 에 추가해요.
 2. repo 루트에 **`Dockerfile`** 이 있어 `docker build` 로 떠야 해요 (axhub 는 framework 자동생성 안 함 — Dockerfile 필수).
 3. 다음 파일이 모두 있어야 해요:
    - `Dockerfile`, `axhub.yaml`, `.env.example`, `lib/axhub.*` (또는 동등 위치)

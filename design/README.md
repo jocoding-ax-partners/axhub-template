@@ -1,6 +1,6 @@
 # 디자인 정본
 
-모든 템플릿(`nextjs-axhub` · `chatbot-axhub` · `idea-*`)이 axhub 콘솔과 같은 모양으로 보이게 하는 파일들이에요.
+모든 템플릿(`nextjs-axhub` · `chatbot-axhub`)이 axhub 콘솔과 같은 모양으로 보이게 하는 파일들이에요.
 **여기만 고치고 스크립트를 돌리세요.**
 
 ```bash

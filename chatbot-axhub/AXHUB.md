@@ -78,6 +78,14 @@
 - 테이블은 `lib/db.ts` 의 `ensureSchema()` 에 `CREATE TABLE IF NOT EXISTS …` 로 적으면 처음 쓸 때 만들어져요.
 - 운영과 스테이징은 DB 가 따로예요.
 - 벡터 검색 같은 확장이 필요하면 `database.extensions: [pgvector]` 처럼 적어요.
+- **바깥 고객 여럿의 데이터를 한 DB 에 담거나, 자체 회원·비밀번호 표가 있다면** DB 계정을 나눠요 (axhub 로그인만 쓰는 앱은 필요 없어요).
+  ```yaml
+  database:
+    engine: postgres
+    roles: [runtime, auth]     # → DATABASE_URL_RUNTIME · DATABASE_URL_AUTH 자동 주입
+    owner_bypass_rls: true     # FORCE ROW LEVEL SECURITY 를 쓸 때만
+  ```
+  새 계정은 표 권한이 없어요 — `ensureSchema()`(기존 계정)에서 `current_database() || '_runtime'` 계정에 `GRANT` 하고 RLS 정책을 만들어요. 고객사 지정은 트랜잭션 안에서 `set_config('app.tenant_id', …, true)` 로 해요. 자세히: https://docs.axhub.ai/ko/docs/features/data#db-계정을-나눠-쓸-때
 - 데이터 보기: `axhub tables db-list --app <슬러그>` · 로컬은 `npm run db:psql`.
 - **백업·복원은 앱 콘솔의 백업 탭**에서 해요. 복원은 데이터만 되돌려요.
 
