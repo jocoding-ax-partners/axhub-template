@@ -11,11 +11,10 @@
 | 템플릿 | 언제 쓰면 좋아요 | Stack | 분류 |
 |--------|-----------------|-------|------|
 | [**nextjs-axhub**](./nextjs-axhub) | 풀스택 웹앱 (가장 흔한 선택) | Next 16 + React 19 + Tailwind 4 + HeroUI v3 + axhub 디자인 시스템 | 서버 (SSR) |
-| [**chatbot-axhub**](./chatbot-axhub) | AI 챗봇 (사내 도우미, 상담, Q&A) | nextjs-axhub 와 같음 + Claude (`@anthropic-ai/sdk`) | 서버 (SSR) |
 
-> 모든 템플릿은 Next.js 하나를 바탕으로 해요. 용도별 템플릿은 화면과 기능만 다르고 뼈대·디자인·배포 방식은 같아요.
+> 템플릿은 Next.js 하나예요. 챗봇처럼 용도가 다른 앱도 이 템플릿에서 시작해 기능을 붙여요.
 >
-> 모두 각자 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요.
+> 템플릿은 **Dockerfile** 로 빌드돼요. axhub backend 는 repo 루트의 `Dockerfile` 로 이미지를 만들고, `axhub.yaml` 로 포트·헬스체크와 Dockerfile 우선순위를 고정해요.
 
 처음이면 **`nextjs-axhub`** 부터 시작하세요. 가장 보편적이고 LLM 도 가장 잘 짜요.
 
@@ -93,13 +92,13 @@ axhub bootstrap 으로 앱을 만들면, 저장소에 올리기 전에 템플릿
 
 로컬에서 직접 돌릴 땐 `.env.local` 로 우선 채울 수 있어요.
 
-> **인증엔 별도 API key 가 필요 없어요.** 방문자 신원은 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요 — 아래 "신뢰 모델" 참고. 챗봇처럼 외부 AI 를 부르는 템플릿만 그 서비스의 키(`ANTHROPIC_API_KEY`)를 직접 넣어요.
+> **인증엔 별도 API key 가 필요 없어요.** 방문자 신원은 axhub 문(ingress 게이트)이 요청마다 실어 주는 `X-AxHub-*` 헤더로 알아요 — 아래 "신뢰 모델" 참고. 외부 AI 를 부르는 기능을 붙이면 그 서비스의 키(예: `ANTHROPIC_API_KEY`)만 직접 넣어요.
 
 ## 기여하기
 
 새 템플릿을 추가하고 싶으세요?
 
-1. `nextjs-axhub` 를 복사해서 시작해요. 디자인 파일(`app/axhub.css` · `scripts/check-design.sh` · `AXHUB.md`)은 `node scripts/sync-design.mjs` 가 뿌려요 — `nextjs-axhub`·`chatbot-axhub` 폴더는 자동으로 잡혀요. 다른 이름이면 그 스크립트의 `TEMPLATES` 에 추가해요.
+1. `nextjs-axhub` 를 복사해서 시작해요. 디자인 파일(`app/axhub.css` · `scripts/check-design.sh` · `AXHUB.md`)은 `node scripts/sync-design.mjs` 가 뿌려요 — `nextjs-axhub` 폴더는 자동으로 잡혀요. 다른 이름이면 그 스크립트의 `TEMPLATES` 에 추가해요.
 2. repo 루트에 **`Dockerfile`** 이 있어 `docker build` 로 떠야 해요 (axhub 는 framework 자동생성 안 함 — Dockerfile 필수).
 3. 다음 파일이 모두 있어야 해요:
    - `Dockerfile`, `axhub.yaml`, `.env.example`, `lib/axhub.*` (또는 동등 위치)
@@ -113,7 +112,7 @@ axhub bootstrap 으로 앱을 만들면, 저장소에 올리기 전에 템플릿
 ## FAQ
 
 **Q. 왜 프레임워크가 Next.js 하나뿐?**
-입문 vibe coder 가 프레임워크를 고르느라 헷갈리지 않게 Next.js 하나로 모았어요. 대신 "무엇을 만들지"(웹앱·챗봇 …)로 템플릿을 나눠요. 예전엔 Vite SPA·Astro 도 있었지만 정리했어요.
+입문 vibe coder 가 템플릿을 고르느라 헷갈리지 않게 Next.js 하나로 모았어요. 챗봇 같은 용도별 화면도 이 템플릿 위에 붙여요. 예전엔 Vite SPA·Astro·챗봇 템플릿도 있었지만 정리했어요.
 
 **Q. 다른 framework 도 axhub 에 올릴 수 있나요?**
 네. repo 루트에 `Dockerfile` 만 있으면 돼요. axhub 가 그걸로 빌드해요. (`axhub.yaml` 로 포트/헬스체크와 Dockerfile 우선순위 조정)
@@ -133,7 +132,6 @@ AI 가 무시하면 그 규칙을 다시 보여주면서 "이거 어겼다" 라�
 | 템플릿 | 위치 | 분류 | 신원 (`me()`) | 허브 SDK/API 직접 호출 |
 |--------|------|------|----------------|----------------|
 | nextjs-axhub | `lib/axhub-server.ts` | server | `headers()` 에서 `X-AxHub-*` 읽기 | `makeAxhub` / `makeGateway` / `queryConnector` — 사용자 쿠키 필요, **회사 앱 주소에서만** |
-| chatbot-axhub | `lib/axhub-server.ts` (+ `lib/ai.ts`) | server | nextjs 와 같아요 | nextjs 와 같아요. Claude 호출은 `lib/ai.ts` — 서버에서만 |
 
 **규칙:** 빌드 결과물엔 어떤 시크릿도 박지 않아요. 서버 전용 SDK 는 절대 클라이언트 번들에 넣지 마세요. 서버 템플릿에서 SDK 를 쓸 땐 요청별로 factory 를 새로 만들고 모듈 레벨 client 캐싱을 하지 않아요. `/__axhub/auth/*` 는 플랫폼 예약 경로라 앱 라우트로 쓸 수 없어요.
 

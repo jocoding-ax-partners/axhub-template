@@ -24,7 +24,7 @@ if [ -n "$SCOPE" ]; then
   DIRS=("$SCOPE")
 elif [ -d nextjs-axhub ] && [ -d design ]; then
   # 템플릿 레포 — 모든 템플릿을 검사
-  DIRS=(nextjs-axhub chatbot-axhub)
+  DIRS=(nextjs-axhub)
 else
   # 앱 안 — 자기 소스만 검사
   DIRS=(.)
