@@ -16,7 +16,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
 
 // 템플릿 폴더
-const TEMPLATES = ["nextjs-axhub", "chatbot-axhub"];
+const TEMPLATES = ["nextjs-axhub"];
 
 /**
  * 정본 → 템플릿별 사본 위치.

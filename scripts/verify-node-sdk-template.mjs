@@ -10,7 +10,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const root = process.cwd()
-const TEMPLATES = ['nextjs-axhub', 'chatbot-axhub']
+const TEMPLATES = ['nextjs-axhub']
 const failures = []
 
 const read = (path) => readFileSync(join(root, path), 'utf8')
@@ -75,8 +75,6 @@ for (const t of TEMPLATES) {
     }
   }
 }
-
-if (!existsSync(join(root, 'chatbot-axhub/lib/ai.ts'))) failures.push('chatbot-axhub/lib/ai.ts: missing Claude boundary')
 
 if (failures.length) {
   console.error(failures.join('\n'))
